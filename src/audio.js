@@ -1,5 +1,5 @@
 // ---------- audio (all synthesized) ----------
-const AU = { ctx: null, muted: false, mode: 'title', layer: 0, step: 0, next: 0, combo: 0 };
+const AU = { ctx: null, muted: false, mode: 'title', layer: 0, step: 0, next: 0, combo: 0, song: 0, want: 0 };
 let aMaster, aSfx, aMus, aDelay, aNoise;
 function initAudio() {
   if (AU.ctx) { if (AU.ctx.state !== 'running') AU.ctx.resume(); return; }
@@ -34,7 +34,7 @@ function noiz(d, o = {}) {
   gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(o.g || 0.2, t0 + (o.a || 0.004)); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
   s.connect(f); f.connect(gn); gn.connect(o.bus || aSfx); s.start(t0, Math.random() * 0.5); s.stop(t0 + d + 0.04);
 }
-const SFX_GAP = { shoot: 0.09, hit: 0.05, pop: 0.045, gem: 0.035, wake: 0.3, zap: 0.1, squish: 0.07, meow: 0.2, boom: 0.08 };
+const SFX_GAP = { coin: 0.05, chime: 0.3, ui: 0.05, shoot: 0.09, hit: 0.05, pop: 0.045, gem: 0.035, wake: 0.3, zap: 0.1, squish: 0.07, meow: 0.2, boom: 0.08 };
 const sfxLast = {};
 const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
 function sfx(n) {
@@ -61,26 +61,54 @@ function sfx(n) {
     case 'scare': tone(880, 0.65, { type: 'sawtooth', f2: 1700, g: 0.22 }); tone(931, 0.65, { type: 'sawtooth', f2: 1790, g: 0.2 }); noiz(0.6, { fc: 3500, type: 'highpass', g: 0.2 }); break;
     case 'win': [0, 4, 7, 12, 16, 19, 24].forEach((s, i) => { tone(523 * Math.pow(2, s / 12), 1.2, { type: 'triangle', g: 0.14, t: i * 0.11, send: true }); }); break;
     case 'dark': tone(70, 1.8, { type: 'sawtooth', f2: 40, g: 0.18 }); break;
+    case 'coin': tone(1568, 0.07, { type: 'square', g: 0.03 }); tone(2093, 0.12, { type: 'square', g: 0.03, t: 0.05 }); break;
+    case 'chime': [0, 7, 12, 19].forEach((s, i) => tone(659 * Math.pow(2, s / 12), 0.5, { g: 0.07, t: i * 0.05, send: true })); break;
+    case 'ui': tone(880, 0.06, { type: 'triangle', g: 0.08 }); break;
+    case 'buy': [0, 5, 12].forEach((s, i) => tone(784 * Math.pow(2, s / 12), 0.2, { type: 'triangle', g: 0.11, t: i * 0.06, send: true })); break;
+    case 'nope': tone(180, 0.14, { type: 'square', f2: 120, g: 0.07 }); break;
     case 'bossdie': noiz(0.9, { fc: 5000, f2: 300, g: 0.35 }); tone(300, 0.9, { type: 'square', f2: 30, g: 0.2 }); for (let i = 0; i < 8; i++) tone(rand(1500, 4000), 0.12, { g: 0.04, t: i * 0.06 }); break;
   }
 }
-// music: creepy music box in A minor, layers build with the night
-const MEL = [76, 0, 72, 76, 81, 0, 76, 0, 84, 0, 83, 81, 76, 0, 0, 0, 77, 0, 72, 77, 81, 0, 77, 0, 84, 0, 81, 77, 72, 0, 0, 0,
-  74, 0, 69, 74, 77, 0, 74, 0, 81, 0, 77, 74, 77, 0, 76, 0, 76, 0, 71, 76, 80, 0, 76, 0, 83, 0, 80, 76, 80, 0, 0, 0];
-const CH = [[57, 60, 64], [57, 60, 64], [53, 57, 60], [53, 57, 60], [50, 53, 57], [50, 53, 57], [52, 56, 59], [52, 56, 59]];
+// music: three creepy toy songs. layers build with the night, songs rotate during a run
+const SONGS = [
+  { // 0: music box in A minor
+    spb: 8, bpm: [84, 92, 100, 108, 124], voice: 'box',
+    mel: [76, 0, 72, 76, 81, 0, 76, 0, 84, 0, 83, 81, 76, 0, 0, 0, 77, 0, 72, 77, 81, 0, 77, 0, 84, 0, 81, 77, 72, 0, 0, 0,
+      74, 0, 69, 74, 77, 0, 74, 0, 81, 0, 77, 74, 77, 0, 76, 0, 76, 0, 71, 76, 80, 0, 76, 0, 83, 0, 80, 76, 80, 0, 0, 0],
+    ch: [[57, 60, 64], [57, 60, 64], [53, 57, 60], [53, 57, 60], [50, 53, 57], [50, 53, 57], [52, 56, 59], [52, 56, 59]] },
+  { // 1: broken carousel waltz in D minor (3/4)
+    spb: 6, bpm: [132, 140, 150, 160, 180], voice: 'organ',
+    mel: [81, 0, 77, 0, 74, 0, 77, 0, 81, 0, 86, 0, 82, 0, 79, 0, 74, 0, 79, 0, 82, 0, 79, 77, 85, 0, 81, 0, 76, 0, 81, 0, 85, 0, 88, 0, 86, 0, 81, 0, 77, 0, 76, 0, 73, 0, 69, 0,
+      81, 82, 81, 0, 77, 0, 74, 0, 77, 0, 81, 0, 79, 81, 79, 0, 74, 0, 70, 0, 74, 0, 79, 0, 76, 0, 73, 0, 76, 0, 81, 0, 79, 0, 76, 0, 74, 0, 0, 0, 77, 0, 74, 0, 0, 0, 0, 0],
+    ch: [[50, 53, 57], [50, 53, 57], [55, 58, 62], [55, 58, 62], [45, 49, 52], [45, 49, 52], [50, 53, 57], [45, 49, 52], [50, 53, 57], [50, 53, 57], [55, 58, 62], [55, 58, 62], [45, 49, 52], [45, 49, 52], [50, 53, 57], [50, 53, 57]] },
+  { // 2: detuned lullaby in E minor
+    spb: 8, bpm: [72, 80, 88, 98, 112], voice: 'lull',
+    mel: [83, 0, 0, 79, 76, 0, 79, 0, 84, 0, 0, 79, 76, 0, 72, 0, 81, 0, 0, 76, 72, 0, 76, 0, 78, 0, 75, 0, 71, 0, 0, 0,
+      83, 0, 0, 79, 88, 0, 86, 0, 84, 0, 0, 79, 76, 0, 79, 0, 81, 0, 84, 0, 83, 0, 81, 0, 78, 0, 75, 0, 76, 0, 0, 0],
+    ch: [[52, 55, 59], [48, 52, 55], [45, 48, 52], [47, 51, 54], [52, 55, 59], [48, 52, 55], [45, 48, 52], [47, 51, 54]] },
+];
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+function lead(v, f, t, L) {
+  if (v === 'organ') { tone(f, 0.34, { type: 'triangle', g: 0.085, bus: aMus, send: true, t, a: 0.02 }); tone(f * 2.004, 0.3, { type: 'square', g: 0.012, bus: aMus, t, a: 0.02 }); tone(f * 0.5, 0.3, { g: 0.03, bus: aMus, t }); }
+  else if (v === 'lull') { tone(f, 1.5, { g: 0.085, bus: aMus, send: true, t }); tone(f * 1.011, 1.5, { g: 0.05, bus: aMus, t }); tone(f * 3, 0.2, { g: 0.012, bus: aMus, t }); }
+  else { tone(f, 0.9, { g: 0.1, bus: aMus, send: true, t }); tone(f * 4, 0.18, { g: 0.013, bus: aMus, t }); }
+}
 function musicTick() {
   const c = AU.ctx; if (!c || c.state !== 'running') return;
   if (AU.next < c.currentTime - 0.5) AU.next = c.currentTime + 0.05;
   const mode = AU.mode; if (mode === 'off') { AU.next = c.currentTime + 0.1; return; }
-  const bpm = mode === 'title' ? 84 : [92, 100, 108, 124][AU.layer], sd = 30 / bpm;
   while (AU.next < c.currentTime + 0.2) {
-    const s = AU.step % 64, bar = s >> 3, b = s & 7, t = AU.next - c.currentTime, L = mode === 'title' ? 0 : AU.layer, ch = CH[bar];
-    const m = MEL[s]; if (m) { const f = mtof(m + (L === 3 ? -1 * (bar % 2) : 0)); tone(f, 0.9, { g: 0.1, bus: aMus, send: true, t }); tone(f * 4, 0.18, { g: 0.013, bus: aMus, t }); }
-    if (b % 2 === 1) tone(mtof(ch[(b >> 1) % 3] + 12), 0.5, { g: 0.035, bus: aMus, send: true, t });
-    if (L >= 1 && (b === 0 || b === 4 || (L >= 2 && b === 3))) tone(mtof(ch[0] - 12), 0.42, { type: 'triangle', g: 0.2, bus: aMus, t });
-    if (L >= 2) { if (b === 0 || b === 4 || (L === 3 && b === 6)) tone(125, 0.17, { f2: 40, g: 0.34, bus: aMus, t }); if (b === 2 || b === 6) noiz(0.09, { g: 0.07, fc: 1900, type: 'bandpass', bus: aMus, t }); noiz(0.03, { g: b % 2 ? 0.035 : 0.018, fc: 7500, type: 'highpass', bus: aMus, t }); }
-    if (L === 3 && b === 0) { tone(mtof(ch[0] - 24), sd * 8, { type: 'sawtooth', g: 0.07, bus: aMus, t, a: 0.2 }); tone(mtof(ch[0] - 24) * 1.5, sd * 8, { type: 'sawtooth', g: 0.03, bus: aMus, t, a: 0.2 }); }
+    let S = SONGS[AU.song]; if (AU.step % (S.spb * S.ch.length) === 0 && AU.want !== AU.song) { AU.song = AU.want; AU.step = 0; S = SONGS[AU.song]; }
+    const L = mode === 'title' ? 0 : AU.layer, sd = 30 / S.bpm[mode === 'title' ? 0 : L + 1], w = S.spb === 6;
+    const s = AU.step % (S.spb * S.ch.length), bar = (s / S.spb) | 0, b = s % S.spb, t = AU.next - c.currentTime, ch = S.ch[bar];
+    const m = S.mel[s]; if (m) lead(S.voice, mtof(m + (L === 3 && AU.song === 0 ? -1 * (bar % 2) : 0)), t, L);
+    if (w) { if (b === 2 || b === 4) { tone(mtof(ch[1] + 12), 0.22, { g: 0.03, bus: aMus, t, type: 'triangle' }); tone(mtof(ch[2] + 12), 0.22, { g: 0.03, bus: aMus, t, type: 'triangle' }); } if (b === 0) tone(mtof(ch[0]), 0.4, { type: 'triangle', g: L >= 1 ? 0.2 : 0.1, bus: aMus, t }); }
+    else { if (b % 2 === 1) tone(mtof(ch[(b >> 1) % 3] + 12), 0.5, { g: 0.035, bus: aMus, send: true, t }); if (L >= 1 && (b === 0 || b === 4 || (L >= 2 && b === 3))) tone(mtof(ch[0] - 12), 0.42, { type: 'triangle', g: 0.2, bus: aMus, t }); }
+    if (L >= 2) {
+      const kick = w ? b === 0 || (L === 3 && b === 3) : b === 0 || b === 4 || (L === 3 && b === 6), sn = w ? b === 2 || b === 4 : b === 2 || b === 6;
+      if (kick) tone(125, 0.17, { f2: 40, g: 0.34, bus: aMus, t }); if (sn) noiz(0.09, { g: w ? 0.045 : 0.07, fc: 1900, type: 'bandpass', bus: aMus, t }); noiz(0.03, { g: b % 2 ? 0.035 : 0.018, fc: 7500, type: 'highpass', bus: aMus, t });
+    }
+    if (L === 3 && b === 0) { tone(mtof(ch[0] - 24), sd * S.spb, { type: 'sawtooth', g: 0.07, bus: aMus, t, a: 0.2 }); tone(mtof(ch[0] - 24) * 1.5, sd * S.spb, { type: 'sawtooth', g: 0.03, bus: aMus, t, a: 0.2 }); }
     AU.next += sd; AU.step++;
   }
 }

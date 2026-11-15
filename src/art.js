@@ -250,17 +250,7 @@ function buildArt() {
   // flashlight
   A.torch = sprite(22, 12, 6, 6, g => { rr(g, -4, -3, 13, 6, 2.5); fs(g, C.lilac, 1.8); g.beginPath(); g.moveTo(8, -3); g.lineTo(14, -5); g.lineTo(14, 5); g.lineTo(8, 3); g.closePath(); fs(g, C.butter, 1.8); });
   buildWorldArt();
-  buildIcons();
-}
-
-function buildPlayerArt(lv) {
-  const o = Object.assign({}, PLAYER_O);
-  if (lv.ears) o.ears = true;
-  if (lv.bow) { o.bow = C.mint; o.bowX = lv.ears ? 15.5 : 0; }
-  if (lv.boots) o.platform = true;
-  if (lv.choker) o.choker = true;
-  const fr = [0, 1, -1].map(st => sprite(64, 90, 32, 80, g => drawDoll(g, o, { step: st })));
-  A.pl = { R: fr, L: fr.map(flipS), w: whiteS(fr[0], '#ff7fa8') };
+  A.icon = {};
 }
 
 function buildWorldArt() {
@@ -385,6 +375,5 @@ const ICON = {
   cake(g) { g.beginPath(); g.moveTo(-22, 4); g.lineTo(22, 4); g.lineTo(16, 32); g.lineTo(-16, 32); g.closePath(); fs(g, C.mint, 3); g.beginPath(); g.moveTo(-26, 4); g.bezierCurveTo(-30, -18, -12, -18, -10, -24); g.bezierCurveTo(-6, -36, 6, -36, 10, -24); g.bezierCurveTo(12, -18, 30, -18, 26, 4); g.closePath(); fs(g, C.pink, 3); circ(g, 0, -32, 6); fs(g, C.red, 2.4); },
 };
 function buildIcons() {
-  A.icon = {};
   for (const k in ICON) { const c = mk(192, 192), g = c.getContext('2d'); g.translate(96, 96); g.scale(2.1, 2.1); g.lineJoin = 'round'; g.lineCap = 'round'; ICON[k](g); A.icon[k] = c; }
 }
