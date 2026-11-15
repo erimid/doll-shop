@@ -1,0 +1,16 @@
+<canvas id="game"></canvas>
+<div id="banner"><div id="bt"></div><div id="bs"></div></div>
+<div id="btns">
+  <button id="bMute" aria-label="Sound"><svg viewBox="0 0 20 20"><path d="M3 7h3l5-4v14l-5-4H3zM13.5 6.5a5 5 0 010 7l-1.2-1.2a3.3 3.3 0 000-4.6z"/></svg></button>
+  <button id="bPause" aria-label="Pause"><svg viewBox="0 0 20 20"><rect x="4" y="3" width="4.5" height="14" rx="1.5"/><rect x="11.5" y="3" width="4.5" height="14" rx="1.5"/></svg></button>
+</div>
+<div id="title" class="ov on">
+  <div class="logo">Doll Shop<small>SURVIVORS</small></div>
+  <p class="tag1">Locked in overnight. They wake up when you get close.</p>
+  <button id="bStart" class="btn">TAP TO START</button>
+  <p class="hint">Drag anywhere to move &middot; attacks are automatic &middot; survive until dawn</p>
+</div>
+<div id="levelup" class="ov"><div class="lvh"><span id="lvn">LEVEL 2</span><b>Pick an upgrade</b></div><div id="cards" class="cards"></div></div>
+<div id="pause" class="ov"><div class="big">PAUSED</div><button id="bResume" class="btn">KEEP PLAYING</button><button id="bQuit" class="btn ghost">START OVER</button></div>
+<div id="over" class="ov"><div class="big drip">THEY GOT YOU</div><p class="sub">The dolls put you on the shelf.</p><div class="stats" id="oStats"></div><button id="bRetry" class="btn">TRY AGAIN</button></div>
+<div id="win" class="ov"><div class="rays"></div><div class="big">DAWN!</div><p class="sub">You survived the night.</p><div class="stats" id="wStats"></div><button id="bAgain" class="btn">PLAY AGAIN</button></div>
