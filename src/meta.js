@@ -1,7 +1,7 @@
 // ---------- save / meta progression ----------
 const SAVE_KEY = 'dss_save_v2';
 function loadSave() {
-  const d = { coins: 0, shop: {}, items: {}, heroes: { luna: 1 }, ach: {}, seen: {}, stats: { runs: 0, kills: 0, minis: 0, bosses: 0, evos: 0, earned: 0, best: {}, wins: {}, heroWins: {} }, hero: 'luna', mode: 'short', muted: false };
+  const d = { coins: 0, shop: {}, items: {}, heroes: { luna: 1 }, ach: {}, seen: {}, stats: { runs: 0, kills: 0, minis: 0, bosses: 0, evos: 0, earned: 0, best: {}, wins: {}, heroWins: {} }, hero: 'luna', mode: 'short', muted: false, dares: {} };
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) for (const k in d) if (s[k] !== undefined && typeof s[k] === typeof d[k]) d[k] = typeof d[k] === 'object' ? Object.assign(d[k], s[k]) : s[k]; } catch (e) { }
   for (const k of ['best', 'wins', 'heroWins']) if (!d.stats[k] || typeof d.stats[k] !== 'object') d.stats[k] = {};
   d.heroes.luna = 1; return d;
@@ -18,12 +18,15 @@ const SHOP = [
   { id: 'grow', g: '▲', c: C.mint, name: 'Fast Learner', desc: '+4% XP', max: 5, cost: 60 },
   { id: 'luck', g: '♣︎', c: '#5fe08a', name: 'Lucky Streak', desc: 'More hearts, buttons and boxes', max: 5, cost: 50 },
   { id: 'greed', g: '●', c: '#ffd24a', name: 'Deep Pockets', desc: '+10% buttons every night', max: 5, cost: 70 },
+  { id: 'area', g: '✺', c: C.pink, name: 'Big Energy', desc: 'Everything hits 4% bigger', max: 5, cost: 70 },
+  { id: 'critp', g: '✦', c: C.butter, name: 'Sharp Eye', desc: '+2% crit chance', max: 5, cost: 60 },
   { id: 'reroll', g: '↻', c: C.pink, name: 'Second Opinion', desc: '+1 reroll every night', max: 3, cost: [150, 400, 900] },
   { id: 'head', g: '⇧', c: C.butter, name: 'Head Start', desc: 'Start one level higher', max: 2, cost: [400, 1100] },
+  { id: 'start', g: '✿', c: C.mint, name: 'Starter Kit', desc: 'Start every night with a free random item', max: 1, cost: [800] },
   { id: 'revive', g: '✚', c: '#ff4f7f', name: 'Nine Lives', desc: 'Come back once when you fall', max: 1, cost: [1500] },
 ];
 const shopCost = (u, n) => Array.isArray(u.cost) ? u.cost[n] : Math.round(u.cost * Math.pow(1.7, n) / 10) * 10;
-const ITEM_COST = { piggy: 80, scrunchie: 120, lipstick: 120, foot: 120, notes: 120, spray: 150, backpack: 180, scissors: 200, shield: 200, clip: 200, battery: 220, mirror: 300, musicbox: 350 };
+const ITEM_COST = { bracelet: 150, tiara: 180, sour: 180, nightlight: 180, bubble: 220, trail: 250, alarm: 250, coupon: 250, zap: 300, turret: 350, piggy: 80, scrunchie: 120, lipstick: 120, foot: 120, notes: 120, spray: 150, backpack: 180, scissors: 200, shield: 200, clip: 200, battery: 220, mirror: 300, musicbox: 350 };
 const ACH = [
   { id: 'mini_1', name: 'Giant Slayer', desc: 'Defeat a miniboss', rw: 50, ok: r => r.minis >= 1 },
   { id: 'win_short', name: 'Closing Time', desc: 'Survive the Closing Shift', rw: 100, ok: r => r.win && r.mode === 'short' },
@@ -37,6 +40,10 @@ const ACH = [
   { id: 'evo_3', name: 'Full Glam', desc: 'Evolve 3 weapons in one night', rw: 250, ok: r => r.evos >= 3 },
   { id: 'end_10', name: 'Insomniac', desc: 'Last 10 minutes of Endless Nightmare', rw: 300, ok: r => r.mode === 'endless' && r.t >= 600 },
   { id: 'end_20', name: 'No Sleep Club', desc: 'Last 20 minutes of Endless Nightmare', rw: 600, ok: r => r.mode === 'endless' && r.t >= 1200 },
+  { id: 'style', name: 'Signature Look', desc: 'Complete a full style set in one night', rw: 150, ok: r => r.style >= 2 },
+  { id: 'evo_5', name: 'Maximum Glow', desc: 'Evolve 5 weapons in one night', rw: 400, ok: r => r.evos >= 5 },
+  { id: 'dare_2', name: 'Double Dare', desc: 'Survive a night with 2 dares on', rw: 200, ok: r => r.win && r.dares >= 2 },
+  { id: 'dare_4', name: 'Fearless', desc: 'Survive a night with all 4 dares on', rw: 600, ok: r => r.win && r.dares >= 4 },
   { id: 'kills_1k', name: 'Toy Recall', desc: 'Stop 1,000 dolls in total', rw: 100, ok: () => SV.stats.kills >= 1000 },
   { id: 'kills_10k', name: 'Clearance Sale', desc: 'Stop 10,000 dolls in total', rw: 400, ok: () => SV.stats.kills >= 10000 },
   { id: 'squad', name: 'Squad Goals', desc: 'Win a night with 3 different girls', rw: 300, ok: () => Object.keys(SV.stats.heroWins).length >= 3 },
@@ -68,7 +75,14 @@ function tap(el, fn) { el.addEventListener('click', e => { initAudio(); fn(e); }
 let cardLock = false, cardAt = 0;
 function buildHtml() {
   const by = { W: [], O: [], D: [], S: [] }; for (const id in P.up) if (IT[id]) by[IT[id].k].push(id);
-  return ['W', 'O', 'D', 'S'].map(k => `<div class="bg"><span>${KNAME[k]} ${by[k].length}/${CAPS[k]}</span><div>${by[k].map(id => `<i class="${P.up[id] >= 6 ? 'e' : ''}"><img src="${iconUrl(id)}"><b>${P.up[id] >= 6 ? '★' : P.up[id]}</b></i>`).join('')}${'<i class="x"></i>'.repeat(Math.max(0, CAPS[k] - by[k].length))}</div></div>`).join('');
+  let sty = ''; for (const c in STYLES) { const [n, t] = styleTier(c), st = STYLES[c]; if (!n) continue; const nx = st.n[Math.min(1, t)]; sty += `<span class="sty${t ? ' on' : ''}" style="--c:${CATC[c]}"><b>${st.name}</b> ${Math.min(n, st.n[1])}/${nx}${t ? ' · ' + st.desc[t - 1] : ''}</span>`; }
+  return (sty ? `<div class="stys">${sty}</div>` : '') + ['W', 'O', 'D', 'S'].map(k => `<div class="bg"><span>${KNAME[k]} ${by[k].length}/${CAPS[k]}</span><div>${by[k].map(id => `<i class="${P.up[id] >= 6 ? 'e' : ''}"><img src="${iconUrl(id)}"><b>${P.up[id] >= 6 ? '★' : P.up[id]}</b></i>`).join('')}${'<i class="x"></i>'.repeat(Math.max(0, CAPS[k] - by[k].length))}</div></div>`).join('');
+}
+function styHint(u) {
+  if (u.evoOf || u.id === 'cake' || !STYLES[u.cat]) return '';
+  const st = STYLES[u.cat], [n, t] = styleTier(u.cat), m = n + (lv(u.id) ? 0 : 1); if (t === 2) return '';
+  const nx = st.n[t], hit = m >= nx && !lv(u.id);
+  return `<em class="sh${hit ? ' have' : ''}">${st.name} ${Math.min(m, nx)}/${nx}${hit ? ': ' + st.desc[t] : ''}</em>`;
 }
 function evoHint(u) {
   if (u.evoOf || u.id === 'cake') return '';
@@ -77,12 +91,12 @@ function evoHint(u) {
   return `<em class="${lv(w.id) > 0 ? 'have' : ''}">✦ Evolves ${w.name}</em>`;
 }
 function showCards(ch) {
-  const box = $('cards'); box.innerHTML = ''; $('lvn').textContent = 'LEVEL ' + P.lvl; cardLock = false; cardAt = performance.now();
+  const box = $('cards'); box.innerHTML = ''; box.classList.toggle('c4', ch.length > 3); $('lvn').textContent = 'LEVEL ' + P.lvl; cardLock = false; cardAt = performance.now();
   for (const u of ch) {
     const evo = !!u.evoOf, plain = u.id === 'cake' || evo, L = plain ? 0 : lv(u.id), el = document.createElement('button'); el.className = 'card' + (evo ? ' evo' : ''); el.style.setProperty('--c', CATC[u.cat]);
     let pips = ''; if (!plain) for (let i = 0; i < 5; i++) pips += `<i class="${i < L ? 'f' : i === L ? 'n' : ''}"></i>`;
-    const tag = evo ? 'EVOLUTION' : u.id === 'cake' ? 'TREAT' : (L === 0 ? 'NEW ' : '') + KNAME[u.k];
-    el.innerHTML = `<img src="${iconUrl(evo ? u.evoOf : u.id)}"><span class="tag">${tag}</span><h3>${u.name}</h3><p>${Array.isArray(u.desc) ? u.desc[L] : u.desc}</p>${evoHint(u)}<div class="pips">${pips}</div>`;
+    const tag = evo ? 'EVOLUTION' : u.id === 'cake' ? 'TREAT' : (L === 0 ? 'NEW ' : '') + KNAME[u.k] + ' · ' + u.cat;
+    el.innerHTML = `<img src="${iconUrl(evo ? u.evoOf : u.id)}"><span class="tag">${tag}</span><h3>${u.name}</h3><p>${Array.isArray(u.desc) ? u.desc[L] : u.desc}</p>${evoHint(u)}${styHint(u)}<div class="pips">${pips}</div>`;
     el.addEventListener('click', () => {
       if (cardLock || performance.now() - cardAt < 380) return; cardLock = true; el.classList.add('sel'); for (const o of box.children) if (o !== el) o.classList.add('dim'); sfx('pick');
       setTimeout(() => { applyUpgrade(u.id); show('levelup', false); P.inv = Math.max(P.inv, 0.9); G.state = 'play'; }, 280);
@@ -106,11 +120,14 @@ function renderSetup() {
   $('heroInfo').innerHTML = `<img class="hbig${own ? '' : ' lock'}" src="${cUrl(A.portrait[HEROES.indexOf(h)].c)}"><div class="hi"><h3>${h.name} <small>${h.tag}</small></h3><p><img src="${iconUrl(h.start)}"> Starts with <b>${st.name}</b></p><p class="perk">${h.perk}</p>${how}</div>`;
   if (!modeOpen(selMode)) selMode = 'short';
   $('modes').innerHTML = Object.values(MODES).map(m => { const open = modeOpen(m.id), best = SV.stats.best[m.id]; return `<button class="mode${m.id === selMode ? ' on' : ''}${open ? '' : ' lock'}" data-m="${m.id}"><b>${m.name}</b><span>${open ? m.sub : '🔒 ' + achById(MODE_REQ[m.id]).desc}</span>${open && best ? `<em>Best ${fmt(best)}${SV.stats.wins[m.id] ? ' · ' + SV.stats.wins[m.id] + ' win' + (SV.stats.wins[m.id] > 1 ? 's' : '') : ''}</em>` : ''}</button>`; }).join('');
+  let dm = 0; for (const k in DARES) if (SV.dares[k]) dm += DARES[k].mul;
+  $('dares').innerHTML = `<span class="dl">DARES${dm ? ' +' + Math.round(dm * 100) + '% buttons' : ''}</span>` + Object.keys(DARES).map(k => `<button class="dare${SV.dares[k] ? ' on' : ''}" data-d="${k}"><b>${DARES[k].name}</b><span>${DARES[k].desc} · +${Math.round(DARES[k].mul * 100)}%</span></button>`).join('');
   $('bGo').classList.toggle('no', !own); coinsSync();
   const bb = $('bBuyHero'); if (bb) tap(bb, () => { if (SV.coins < h.cost) { sfx('nope'); return; } SV.coins -= h.cost; SV.heroes[h.id] = 1; save(); sfx('buy'); renderSetup(); });
 }
 $('heroes').addEventListener('click', e => { const b = e.target.closest('[data-h]'); if (!b) return; initAudio(); selHero = b.dataset.h; sfx('ui'); renderSetup(); });
 $('modes').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; initAudio(); if (!modeOpen(b.dataset.m)) { sfx('nope'); return; } selMode = b.dataset.m; sfx('ui'); renderSetup(); });
+$('dares').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; initAudio(); const k = b.dataset.d; if (SV.dares[k]) delete SV.dares[k]; else SV.dares[k] = 1; save(); sfx('ui'); renderSetup(); });
 tap($('bStart'), () => { sfx('ui'); selHero = heroOwned(heroById(SV.hero)) ? SV.hero : 'luna'; selMode = SV.mode; renderSetup(); screen('setup'); });
 tap($('bGo'), () => { if (!heroOwned(heroById(selHero))) { sfx('nope'); return; } startRun(selMode, selHero); });
 for (const b of document.querySelectorAll('[data-back]')) tap(b, () => { sfx('ui'); showTitle(); });
@@ -169,11 +186,13 @@ function startRun(mode, heroId) {
 function endRun(win, quit) {
   const M = G.mode, t = Math.min(G.t, M.len), st = SV.stats;
   const parts = [['Buttons picked up', Math.round(G.coins * S.coin)], ['Time survived', Math.floor(Math.min(t, 1800) / 6)], ['Minibosses', G.minisKilled * 25], ['Madame Porcelain', G.bossKills * 100], ['Made it to dawn', win ? (M.id === 'short' ? 100 : 400) : 0]];
+  let dm = 0, dn = 0; for (const k in G.dare) if (G.dare[k] && DARES[k]) { dm += DARES[k].mul; dn++; }
+  if (dm) { let sum = 0; for (const p of parts) sum += p[1]; parts.push(['Dares +' + Math.round(dm * 100) + '%', Math.round(sum * dm)]); }
   st.runs++; st.kills += G.kills; st.minis += G.minisKilled; st.bosses += G.bossKills; st.evos += G.evos;
   for (const k in G.seen) SV.seen[k] = (SV.seen[k] || 0) + G.seen[k];
   const newBest = t > (st.best[M.id] || 0); if (newBest) st.best[M.id] = Math.round(t);
   if (win) { st.wins[M.id] = (st.wins[M.id] || 0) + 1; st.heroWins[G.hero.id] = 1; }
-  const r = { win, mode: M.id, t, minis: G.minisKilled, boss: G.bossKills, evos: G.evos, lvl: P.lvl, zones: Object.keys(G.zones).length, weapons: Object.keys(P.up).filter(id => IT[id] && IT[id].k === 'W').length };
+  const r = { win, mode: M.id, t, minis: G.minisKilled, boss: G.bossKills, evos: G.evos, lvl: P.lvl, style: G.styleMax, dares: dn, zones: Object.keys(G.zones).length, weapons: Object.keys(P.up).filter(id => IT[id] && IT[id].k === 'W').length };
   const fresh = []; for (let pass = 0; pass < 2; pass++) for (const a of ACH) if (!SV.ach[a.id] && a.ok(r)) { SV.ach[a.id] = 1; fresh.push(a); }
   let earned = 0; for (const p of parts) earned += p[1]; for (const a of fresh) earned += a.rw;
   SV.coins += earned; st.earned += earned; save();
@@ -185,6 +204,8 @@ function endRun(win, quit) {
   let h = `<div class="earn"><i class="bi"></i><b>+${earned}</b><span>buttons</span></div><ul>` + parts.filter(p => p[1] > 0).map(p => `<li>${p[0]}<b>+${p[1]}</b></li>`).join('');
   for (const a of fresh) h += `<li class="new">★ Sticker: ${a.name}<b>+${a.rw}</b></li>`;
   for (const a of fresh) { for (const x of HEROES) if (x.unlock === a.id) h += `<li class="new">New girl unlocked: ${x.name}</li>`; for (const m in MODE_REQ) if (MODE_REQ[m] === a.id) h += `<li class="new">New shift unlocked: ${MODES[m].name}</li>`; }
+  const by = Object.entries(G.by).filter(e => IT[e[0]] && e[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 5), top = by.length ? by[0][1] : 1;
+  $('rDmg').innerHTML = by.length ? '<span>TOP DAMAGE</span>' + by.map(([id, v]) => `<div><img src="${iconUrl(id)}"><i><u style="width:${Math.max(4, v / top * 100)}%"></u></i><b>${v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v)}</b></div>`).join('') : '';
   $('rEarn').innerHTML = h + '</ul>'; coinsSync(); show('btns', false); screen('res');
   if (fresh.length) setTimeout(() => sfx('box'), 500);
 }

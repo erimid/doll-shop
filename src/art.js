@@ -67,6 +67,24 @@ function drawMouth(g, o, hy) {
   } else if (o.mouth === 'o') { ell(g, 0, my, 1.8, 2.2); fs(g, '#7a2a5c', 1.2); }
   else { g.beginPath(); g.moveTo(-3, my - 0.3); g.quadraticCurveTo(0, my + 2.6, 3, my - 0.3); g.lineWidth = 1.7; g.stroke(); }
 }
+// the awake face: hollow sockets, pinprick pupils, running mascara, a grin that is too wide
+function scareFace(g, o = {}) {
+  const ex = o.ex || 6.6, ey = (o.ey === undefined ? -41.5 : o.ey) + (o.dy || 0), my = (o.my === undefined ? -34.4 : o.my) + (o.dy || 0), k = o.k || 1, col = o.col || '#ff2244';
+  g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+  if (o.eyes !== false) for (const s of [-1, 1]) {
+    g.beginPath(); g.moveTo(s * ex - 1.2 * k, ey + 3 * k); g.lineTo(s * ex - 1.6 * k, ey + (s > 0 ? 13 : 9.5) * k); g.moveTo(s * ex + 2 * k, ey + 3 * k); g.lineTo(s * ex + 2.2 * k, ey + (s > 0 ? 8 : 11) * k); g.lineWidth = 1.7 * k; g.strokeStyle = '#0b0618'; g.stroke();
+    if (o.one && s < 0) continue;
+    ell(g, s * ex, ey, 5.4 * k, 6.5 * k); g.fillStyle = '#05020c'; g.fill(); g.lineWidth = 1.3 * k; g.strokeStyle = '#000'; g.stroke();
+    circ(g, s * ex + (s > 0 ? 0.7 : -0.3) * k, ey + 0.8 * k, 1.7 * k); g.fillStyle = col; g.fill(); circ(g, s * ex + (s > 0 ? 0.7 : -0.3) * k, ey + 0.8 * k, 0.6 * k); g.fillStyle = '#fff'; g.fill();
+  }
+  if (o.grin !== false) {
+    const w = (o.w || 9.6) * k; g.beginPath(); g.moveTo(-w, my - 2.4 * k); g.quadraticCurveTo(0, my + 7 * k, w, my - 2.4 * k); g.quadraticCurveTo(0, my + 1.4 * k, -w, my - 2.4 * k); g.closePath(); g.fillStyle = '#05020c'; g.fill(); g.lineWidth = 1.1 * k; g.strokeStyle = '#000'; g.stroke();
+    g.fillStyle = '#fff6fb'; for (let i = -3; i <= 3; i++) { const x = i * 2.5 * k, yu = my - 2.4 * k + 1.9 * k * (1 - (x / w) * (x / w)); g.beginPath(); g.moveTo(x - 1.15 * k, yu); g.lineTo(x + 1.15 * k, yu); g.lineTo(x, yu + 2.5 * k); g.closePath(); g.fill(); }
+    g.beginPath(); g.moveTo(-w, my - 2.4 * k); g.lineTo(-w - 2.4 * k, my - 4.6 * k); g.moveTo(w, my - 2.4 * k); g.lineTo(w + 2.4 * k, my - 4.6 * k); g.lineWidth = 1.2 * k; g.strokeStyle = '#0b0618'; g.stroke();
+  }
+  if (o.crack !== false) { g.strokeStyle = 'rgba(11,6,24,.75)'; g.lineWidth = 0.9 * k; g.beginPath(); g.moveTo(-2 * k, ey - 13 * k); g.lineTo(0.5 * k, ey - 8.5 * k); g.lineTo(-3 * k, ey - 6 * k); g.moveTo(0.5 * k, ey - 8.5 * k); g.lineTo(4 * k, ey - 7 * k); g.stroke(); }
+  g.restore();
+}
 function drawDoll(g, o, p = {}) {
   const sit = p.sit, hy = -44;
   g.save();
@@ -194,7 +212,7 @@ function buildArt() {
   // dolls
   A.doll = {};
   for (const t in DOLLS) A.doll[t] = DOLLS[t].map(o => {
-    const R = sprite(60, 84, 30, 76, g => drawDoll(g, o, { arms: 'out' }));
+    const R = sprite(60, 84, 30, 76, g => { drawDoll(g, o, { arms: 'out' }); scareFace(g, { one: o.eyes === 'mismatch', col: t === 'bal' ? '#5fffd8' : '#ff2244' }); });
     return { R, L: flipS(R), wR: whiteS(R), wL: whiteS(flipS(R)), sit: sprite(60, 84, 30, 76, g => drawDoll(g, o, { sit: true, closed: true })), col: o.dress };
   });
   A.doll.mat = MATC.map(([a, b]) => { const R = sprite(60, 76, 30, 68, g => drawMat(g, a, b), 2.5); const w = whiteS(R); return { R, L: R, wR: w, wL: w, sit: R, col: a }; });
@@ -211,6 +229,7 @@ function buildArt() {
   A.puff = sprite(32, 32, 16, 16, g => { const gr = g.createRadialGradient(0, 0, 2, 0, 0, 15); gr.addColorStop(0, 'rgba(255,246,251,.95)'); gr.addColorStop(0.6, 'rgba(240,225,255,.6)'); gr.addColorStop(1, 'rgba(240,225,255,0)'); g.fillStyle = gr; g.fillRect(-16, -16, 32, 32); });
   { const c = mk(256, 256), g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 70, 128, 128, 182); gr.addColorStop(0, 'rgba(8,4,20,0)'); gr.addColorStop(1, 'rgba(8,4,20,.82)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); A.vig = c; }
   { const c = mk(256, 256), g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 60, 128, 128, 180); gr.addColorStop(0, 'rgba(255,40,90,0)'); gr.addColorStop(1, 'rgba(255,30,80,.85)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); A.vigRed = c; }
+  { const c = mk(256, 256), g = c.getContext('2d'), im = g.createImageData(256, 256), d = im.data; for (let i = 0; i < d.length; i += 4) { const v = Math.random() < 0.5 ? 0 : 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = (Math.random() * 255) | 0; } g.putImageData(im, 0, 0); A.grain = c; }
   // gems
   const gem = (col, hi, s) => sprite(24, 28, 12, 14, g => { g.scale(s, s); g.beginPath(); g.moveTo(0, -10); g.lineTo(7.5, -2.5); g.lineTo(0, 10); g.lineTo(-7.5, -2.5); g.closePath(); fs(g, col, 2); g.beginPath(); g.moveTo(-7.5, -2.5); g.lineTo(0, -4.5); g.lineTo(7.5, -2.5); g.moveTo(0, -4.5); g.lineTo(0, 10); g.lineWidth = 1; g.strokeStyle = 'rgba(26,15,51,.45)'; g.stroke(); g.beginPath(); g.moveTo(-4.4, -3.6); g.lineTo(0, -8.2); g.lineTo(0, -5.2); g.closePath(); g.fillStyle = hi; g.fill(); });
   A.gem = [gem('#ff6fc0', '#ffd6ee', 0.82), gem('#4fe6c6', '#d6fff5', 1), gem('#ffd24a', '#fff6cf', 1.18), sprite(24, 28, 12, 14, g => { heart(g, 0, 0, 8); fs(g, '#ff4f7f', 2); ell(g, -3.4, -3, 1.8, 2.6, -0.5); g.fillStyle = '#ffd0dc'; g.fill(); })];

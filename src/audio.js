@@ -34,7 +34,7 @@ function noiz(d, o = {}) {
   gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(o.g || 0.2, t0 + (o.a || 0.004)); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
   s.connect(f); f.connect(gn); gn.connect(o.bus || aSfx); s.start(t0, Math.random() * 0.5); s.stop(t0 + d + 0.04);
 }
-const SFX_GAP = { coin: 0.05, chime: 0.3, ui: 0.05, shoot: 0.09, hit: 0.05, pop: 0.045, gem: 0.035, wake: 0.3, zap: 0.1, squish: 0.07, meow: 0.2, boom: 0.08 };
+const SFX_GAP = { coin: 0.05, chime: 0.3, ui: 0.05, shoot: 0.09, hit: 0.05, pop: 0.045, gem: 0.035, wake: 0.3, zap: 0.1, squish: 0.07, meow: 0.2, boom: 0.08, giggle: 2, whisper: 2, heart: 0.5 };
 const sfxLast = {};
 const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
 function sfx(n) {
@@ -65,6 +65,9 @@ function sfx(n) {
     case 'chime': [0, 7, 12, 19].forEach((s, i) => tone(659 * Math.pow(2, s / 12), 0.5, { g: 0.07, t: i * 0.05, send: true })); break;
     case 'ui': tone(880, 0.06, { type: 'triangle', g: 0.08 }); break;
     case 'buy': [0, 5, 12].forEach((s, i) => tone(784 * Math.pow(2, s / 12), 0.2, { type: 'triangle', g: 0.11, t: i * 0.06, send: true })); break;
+    case 'giggle': for (let i = 0; i < 6; i++) { const f = 1250 - i * 70 + rand(-40, 40); tone(f, 0.11, { type: 'triangle', f2: f * 1.25, g: 0.05, t: i * 0.13, send: true }); tone(f * 0.5 * 1.03, 0.11, { type: 'sine', f2: f * 0.62, g: 0.035, t: i * 0.13 }); } break;
+    case 'whisper': for (let i = 0; i < 4; i++) noiz(0.22, { type: 'bandpass', fc: rand(1800, 3400), f2: rand(900, 1500), q: 3, g: 0.09, a: 0.08, t: i * 0.24 }); tone(58, 1.3, { f2: 44, g: 0.2, a: 0.3 }); break;
+    case 'heart': tone(62, 0.16, { f2: 38, g: 0.5 }); tone(56, 0.2, { f2: 34, g: 0.4, t: 0.2 }); break;
     case 'nope': tone(180, 0.14, { type: 'square', f2: 120, g: 0.07 }); break;
     case 'bossdie': noiz(0.9, { fc: 5000, f2: 300, g: 0.35 }); tone(300, 0.9, { type: 'square', f2: 30, g: 0.2 }); for (let i = 0; i < 8; i++) tone(rand(1500, 4000), 0.12, { g: 0.04, t: i * 0.06 }); break;
   }
