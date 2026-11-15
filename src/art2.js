@@ -224,20 +224,20 @@ function shelfSprite(v, pal) {
   });
 }
 function buildArt2() {
-  for (const t in NEWDOLLS) A.doll[t] = NEWDOLLS[t].map(o => { const R = sprite(64, 88, 32, 78, g => drawDollX(g, o, { arms: t === 'baby' ? 'down' : 'out', sit: t === 'hush' })); return { R, L: flipS(R), wR: whiteS(R), wL: whiteS(flipS(R)), sit: sprite(64, 88, 32, 78, g => drawDollX(g, o, { sit: true, closed: t !== 'nova' && t !== 'patch' })), col: o.dress }; });
-  A.doll.teddy = [['#c98a5a', '#f2d2a8'], ['#e69ac0', '#ffe0ee'], ['#8fa8e6', '#e0e8ff']].map(([a, b]) => setOf(g => drawTeddy(g, a, b)));
+  for (const t in NEWDOLLS) A.doll[t] = NEWDOLLS[t].map(o => { const R = sprite(64, 88, 32, 78, g => { drawDollX(g, o, { arms: t === 'baby' ? 'down' : 'out', sit: t === 'hush' }); scareFace(g, { one: o.eyes === 'mismatch', dy: t === 'hush' ? 9 : 0, eyes: t !== 'nova', grin: t !== 'baby', crack: t !== 'nova', col: t === 'hush' ? '#ffffff' : t === 'baby' ? '#7fd0ff' : t === 'patch' || t === 'buddy' ? '#ffd24a' : '#ff2244' }); }); return { R, L: flipS(R), wR: whiteS(R), wL: whiteS(flipS(R)), sit: sprite(64, 88, 32, 78, g => drawDollX(g, o, { sit: true, closed: t !== 'nova' && t !== 'patch' })), col: o.dress }; });
+  A.doll.teddy = [['#c98a5a', '#f2d2a8'], ['#e69ac0', '#ffe0ee'], ['#8fa8e6', '#e0e8ff']].map(([a, b]) => setOf(g => { drawTeddy(g, a, b); scareFace(g, { ex: 7, ey: -47, my: -36.5, one: true, w: 7.5, crack: false, col: '#ff3d7f' }); }));
   A.doll.robot = [['#8fd0ff', '#5a7ad6'], ['#ff9a9a', '#c9506a']].map(([a, b]) => setOf(g => drawRobot(g, a, b), 64, 96, 86));
   A.doll.jack = [['#ff6f9f', '#ffe58a'], ['#7c6cf0', '#8ff5d8']].map(([a, b]) => setOf(g => drawJack(g, a, b), 64, 100, 90));
   A.doll.manne = [['#f4eef8'], ['#e6d2c2']].map(([a]) => setOf(g => drawManne(g, a), 64, 104, 94));
   Object.assign(A.eye, { teddy: eyeSprite('#ff3d7f', 6.5, 6), robot: eyeSprite('#5fffd8', 6, 9), jack: eyeSprite('#ff2244'), manne: eyeSprite('#ffffff', 3.2, 4), baby: eyeSprite('#7fd0ff'), patch: eyeSprite('#ffd24a'), buddy: eyeSprite('#ffd24a'), hush: eyeSprite('#ffffff', 6.6, 6), nova: eyeSprite('#4ff0ff', 6.6, 10) });
   // minibosses
   A.mb = {
-    bigted: bigSet(g => drawTeddy(g, '#b06a4a', '#f2d2a8'), 2.7, 64, 92, 82), jackking: bigSet(g => drawJack(g, '#b0123c', '#ffe58a'), 2.4, 64, 100, 90),
+    bigted: bigSet(g => { drawTeddy(g, '#b06a4a', '#f2d2a8'); scareFace(g, { ex: 7, ey: -47, my: -36.5, one: true, w: 7.5, crack: false, col: '#ff3d7f' }); }, 2.7, 64, 92, 82), jackking: bigSet(g => drawJack(g, '#b0123c', '#ffe58a'), 2.4, 64, 100, 90),
     unit9: bigSet(g => drawRobot(g, '#ff7a5c', '#8a2f4a'), 2.5, 64, 96, 86), seam: bigSet(g => drawManne(g, '#d9c2e6'), 2.3, 64, 104, 94),
-    crybaby: bigSet(g => drawDollX(g, Object.assign({}, NEWDOLLS.baby[0], { iris: '#ff5577' }), { arms: 'out' }), 3, 64, 88, 78),
-    stitch: bigSet(g => drawDollX(g, Object.assign({}, NEWDOLLS.patch[0], { dress: '#3a5a48' }), { arms: 'out' }), 2.6, 64, 88, 78),
-    twin: bigSet(g => drawDoll(g, Object.assign({}, DOLLS.por[0], { hair: '#f6f6ff', dress: '#ff5577', bow: '#17102b' }), { arms: 'out' }), 2, 64, 88, 78),
-    twin2: bigSet(g => drawDoll(g, Object.assign({}, DOLLS.por[0], { hair: '#17102b', dress: '#7fc4ff', bow: '#fff6fb' }), { arms: 'out' }), 2, 64, 88, 78),
+    crybaby: bigSet(g => { drawDollX(g, Object.assign({}, NEWDOLLS.baby[0], { iris: '#ff5577' }), { arms: 'out' }); scareFace(g, { grin: false, col: '#7fd0ff' }); }, 3, 64, 88, 78),
+    stitch: bigSet(g => { drawDollX(g, Object.assign({}, NEWDOLLS.patch[0], { dress: '#3a5a48' }), { arms: 'out' }); scareFace(g, { one: true, col: '#ffd24a' }); }, 2.6, 64, 88, 78),
+    twin: bigSet(g => { drawDoll(g, Object.assign({}, DOLLS.por[0], { hair: '#f6f6ff', dress: '#ff5577', bow: '#17102b' }), { arms: 'out' }); scareFace(g); }, 2, 64, 88, 78),
+    twin2: bigSet(g => { drawDoll(g, Object.assign({}, DOLLS.por[0], { hair: '#17102b', dress: '#7fc4ff', bow: '#fff6fb' }), { arms: 'out' }); scareFace(g, { col: '#7fc4ff' }); }, 2, 64, 88, 78),
   };
   // floor tiles, shelves
   A.tiles = {}; for (const k in TILEFN) A.tiles[k] = sprite(200, 200, 0, 0, TILEFN[k], 1.5);

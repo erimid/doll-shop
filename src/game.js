@@ -16,7 +16,8 @@ const zoneAt = (x, y) => ZONES[clamp((y / ZH) | 0, 0, 2) * 3 + clamp((x / ZW) | 
 const shelves = [], solids = [], slots = [], decor = [], wallDecor = [], lairs = [], lights = [];
 const G = { state: 'boot', t: 0, rt: 0, ts: 1, bot: false, mode: null, hero: null };
 let P = null;
-const enemies = [], gems = [], shots = [], eshots = [], parts = [], nums = [], boxes = [], pets = [], rings = [], flashes = [], ezones = [], fields = [], beams = [];
+const enemies = [], gems = [], shots = [], eshots = [], parts = [], nums = [], boxes = [], pets = [], rings = [], flashes = [], ezones = [], fields = [], beams = [], bolts = [], toys = [];
+let SRC = 'other';
 const S = {};
 const joy = { on: false, id: -1, bx: 0, by: 0, x: 0, y: 0, dx: 0, dy: 0 }, key = { x: 0, y: 0 };
 const MODES = {
@@ -59,7 +60,7 @@ const IT = {
   kitty: { k: 'W', name: 'Ghost Kitty', cat: 'PET', desc: ['A ghost cat pounces on dolls for you.', 'Sharper claws.', 'A second kitty.', 'Pounces faster.', 'Three kitties. Chaos.'], evo: ['ears', 'Nine Lives', '5 kitties with exploding pounces.'] },
   bunny: { k: 'W', name: 'Spirit Bunny', cat: 'PET', desc: ['A bunny fetches gems for you.', 'Faster bunny.', 'A second bunny.', 'Gems give +15% XP.', 'Three bunnies. +30% XP.'], evo: ['bow', 'Moon Rabbit', '4 bunnies that stomp where they land. +50% XP.'] },
   storm: { k: 'W', name: 'Star Shower', cat: 'CHARM', desc: ['Shooting stars strike 2 random dolls.', '3 stars.', 'More damage.', '5 stars.', '7 stars, faster.'], evo: ['clip', 'Meteor Crush', '10 huge meteors at a time.'] },
-  spray: { k: 'W', name: 'Hairspray Torch', cat: 'MAKEUP', desc: ['A cone of flame where your flashlight points.', 'Longer reach.', 'Wider and hotter.', 'Longer reach.', 'Much hotter.'], evo: ['choker', 'Dragon Curl', 'A huge blue flame that melts anything.'] },
+  spray: { k: 'W', name: 'Hairspray Torch', cat: 'MAKEUP', desc: ['A cone of flame that turns toward the nearest doll.', 'Longer reach.', 'Wider and hotter.', 'Longer reach.', 'Much hotter.'], evo: ['choker', 'Dragon Curl', 'A huge blue flame that melts anything.'] },
   scissors: { k: 'W', name: 'Fabric Scissors', cat: 'TOY', desc: ['Scissors fly out, then boomerang back.', 'More damage.', 'Throws 2.', 'More damage.', 'Throws 3, faster.'], evo: ['scrunchie', 'Shear Madness', 'Giant scissors that never stop cutting.'] },
   mirror: { k: 'W', name: 'Mirror Compact', cat: 'MAKEUP', desc: ['Fires a light beam through a line of dolls.', 'More damage.', 'Wider beam, faster.', '2 beams.', 'Wider and faster.'], evo: ['battery', 'Prism Laser', '3 rainbow beams, almost nonstop.'] },
   musicbox: { k: 'W', name: 'Music Box', cat: 'TOY', desc: ['A shockwave pushes dolls away every few seconds.', 'Bigger wave.', 'More damage, faster.', 'Bigger wave.', 'More damage, faster.'], evo: ['locket', 'Lullaby of Doom', 'A giant wave that puts dolls in slow motion.'] },
@@ -81,10 +82,39 @@ const IT = {
   clip: { k: 'S', name: 'Lucky Clover Clip', cat: 'CHARM', desc: 'More hearts, buttons and mystery boxes. +2% crit.' },
   battery: { k: 'S', name: 'Extra Batteries', cat: 'TOY', desc: 'Bigger flashlight. Dolls in the beam are slower and take more damage.' },
 };
+Object.assign(IT, {
+  whip: { k: 'W', name: 'Jump Rope', cat: 'TOY', desc: ['Cracks a rope toward the nearest doll.', 'More damage.', 'Longer rope, faster.', 'Also cracks behind you.', 'Longer and faster.'], evo: ['backpack', 'Double Dutch', 'Two giant ropes crack both sides at once.'] },
+  bubble: { k: 'W', name: 'Bubble Wand', cat: 'TOY', desc: ['Blows drifting bubbles that pop on dolls.', '3 bubbles.', 'Bigger pop.', '4 bubbles.', '5 bubbles, faster.'], evo: ['hoodie', 'Bubble Bath', 'A flood of big bubbles that trap dolls in slow motion.'] },
+  zap: { k: 'W', name: 'Static Hairbrush', cat: 'MAKEUP', desc: ['Lightning jumps between 3 dolls.', 'Jumps to 4.', 'More damage, faster.', 'Jumps to 6.', 'Jumps to 8, faster.'], evo: ['notes', 'Bad Hair Day', 'Lightning hits 14 dolls and stuns them.'] },
+  trail: { k: 'W', name: 'Glitter Skates', cat: 'OUTFIT', desc: ['Leave a burning glitter trail behind you.', 'Hotter trail.', 'Wider trail that lasts longer.', 'Hotter trail.', 'Wider and much hotter.'], evo: ['foot', 'Rainbow Road', 'A huge rainbow trail that slows everything on it.'] },
+  turret: { k: 'W', name: 'Tin Soldier', cat: 'TOY', desc: ['Drops a toy soldier that shoots dolls.', 'Stronger shots.', '2 soldiers at a time.', 'Stronger shots.', 'Soldiers last longer and hit harder.'], evo: ['piggy', 'Toy Army', '4 rapid-fire soldiers at a time.'] },
+  bracelet: { k: 'O', name: 'Friendship Bracelet', cat: 'PET', desc: 'Pets, charms and toy soldiers hit 18% harder.' },
+  tiara: { k: 'O', name: 'Glass Tiara', cat: 'OUTFIT', desc: 'Crits do 25% more damage.' },
+  sour: { k: 'O', name: 'Sour Lip Balm', cat: 'MAKEUP', desc: '+10% damage to dolls that are slowed, stunned or poisoned.' },
+  plaster: { k: 'D', name: 'Sparkle Bandages', cat: 'OUTFIT', desc: 'After a hit, heal 6 health back and stay safe a little longer.' },
+  nightlight: { k: 'D', name: 'Night Light', cat: 'TOY', desc: 'Dolls close to you move 6% slower.' },
+  alarm: { k: 'S', name: 'Snooze Button', cat: 'TOY', desc: 'Every so often, every doll nearby freezes for a moment. Sooner each level.' },
+  coupon: { k: 'S', name: 'Lucky Coupons', cat: 'CHARM', desc: '+1 reroll now, and level-ups show 4 choices.' },
+});
 for (const id in IT) IT[id].id = id;
+// styles: carry enough items of one kind for a set bonus
+const STYLES = {
+  MAKEUP: { name: 'Glam', n: [3, 5], desc: ['+12% damage', '+30% damage'] },
+  OUTFIT: { name: 'Streetwear', n: [3, 5], desc: ['+8% speed, 8% less damage taken', '+16% speed, 18% less damage taken'] },
+  CHARM: { name: 'Lucky', n: [3, 5], desc: ['+8% crit, more luck', '+18% crit, lots more luck'] },
+  TOY: { name: 'Toy Box', n: [3, 5], desc: ['Attack 8% faster', 'Attack 18% faster'] },
+  PET: { name: 'Besties', n: [2, 3], desc: ['Pets hit 25% harder', 'Pets hit 60% harder and act faster'] },
+};
+function styleTier(cat) { let c = 0; for (const id in P.up) if (IT[id] && IT[id].cat === cat) c++; const st = STYLES[cat]; return [c, c >= st.n[1] ? 2 : c >= st.n[0] ? 1 : 0]; }
+const DARES = {
+  dark: { name: 'Lights Out', desc: 'Only your flashlight works', mul: 0.25 },
+  rush: { name: 'Sugar Rush', desc: 'Dolls are 20% faster', mul: 0.3 },
+  swarm: { name: 'Black Friday', desc: '40% more dolls', mul: 0.3 },
+  glass: { name: 'Glass Heart', desc: 'Half health', mul: 0.35 },
+};
 const CAKE = { id: 'cake', name: 'Midnight Cupcake', cat: 'TREAT', desc: 'Heal 40 health.' };
 const CAPS = { W: 6, O: 4, D: 3, S: 3 }, KNAME = { W: 'WEAPON', O: 'POWER', D: 'DEFENSE', S: 'SUPPORT' };
-const BASE_ITEMS = ['gloss', 'bomb', 'charm', 'aura', 'ball', 'kitty', 'bunny', 'storm', 'choker', 'nails', 'liner', 'ears', 'locket', 'hoodie', 'boots', 'bow'];
+const BASE_ITEMS = ['gloss', 'bomb', 'charm', 'aura', 'ball', 'kitty', 'bunny', 'storm', 'choker', 'nails', 'liner', 'ears', 'locket', 'hoodie', 'boots', 'bow', 'whip', 'plaster'];
 const CATC = { MAKEUP: C.pink, OUTFIT: C.lilac, CHARM: C.butter, PET: C.mint, TOY: C.blue, TREAT: C.pink, EVOLUTION: '#ffd24a' };
 const lv = id => P.up[id] || 0;
 const need = l => Math.round(5 + l * 3.6 + l * l * 0.3);
@@ -122,13 +152,14 @@ function unlocked() { const o = {}; for (const k in ET) o[k] = G.t >= ET[k].u; r
 const SPAWNW = {}; for (const k in ET) SPAWNW[k] = ET[k].wt;
 
 function reset(mode, hero) {
-  for (const a of [enemies, gems, shots, eshots, parts, nums, boxes, pets, rings, flashes, ezones, fields, beams]) a.length = 0;
+  for (const a of [enemies, gems, shots, eshots, parts, nums, boxes, pets, rings, flashes, ezones, fields, beams, bolts, toys]) a.length = 0;
   G.mode = MODES[mode] || MODES.short; G.hero = hero || HEROES[0];
   const M = G.mode;
-  Object.assign(G, { t: 0, kills: 0, coins: 0, shake: 0, flash: 0, flash2: 0, blackout: 0, hurt: 0, dawn: 0, spawnAcc: 0, boxT: 22, comboT: 0, pending: 0, bosses: [], bossDead: false, dmgDone: 0, dps: 0, dpsT: 0, dpsLast: 0, stateT: 0, cap: 24, lightT: rand(14, 22), nextWave: 60, wi: 0, minis: M.minis.slice(), nextMini: M.every || 0, bossAt: M.boss, bossWarn: false, eliteT: 50, hm: 1, kbR: 1, spdMul: 1, dmgMul: 1, minisKilled: 0, bossKills: 0, evos: 0, seen: {}, zone: null, zones: {}, mbOrder: Object.keys(MB).filter(k => !MB[k].final).sort(() => Math.random() - 0.5), mbi: 0, earned: 0 });
-  P = { kind: 'player', x: 2400, y: 1810, sy: 1810, r: 13, hp: 100, maxhp: 100, vx: 0, vy: 0, face: 1, back: false, aim: -Math.PI / 2, inv: 0, lvl: 1, xp: 0, need: need(1), up: {}, walk: 0, moving: false, tm: { gloss: 0.5, bomb: 1, ball: 0.6, storm: 1.4, aura: 0, spray: 0, scissors: 0.8, mirror: 1, musicbox: 1.5 }, charms: [], auraR: 0, sprayR: 0, sprayA: 0, shieldUp: false, shieldT: 3, revives: 0, rerolls: 0, blinkT: 3 };
+  Object.assign(G, { t: 0, kills: 0, coins: 0, shake: 0, flash: 0, flash2: 0, blackout: 0, hurt: 0, dawn: 0, spawnAcc: 0, boxT: 22, comboT: 0, pending: 0, bosses: [], bossDead: false, dmgDone: 0, dps: 0, dpsT: 0, dpsLast: 0, stateT: 0, cap: 24, lightT: rand(14, 22), scareT: rand(22, 32), peek: 0, peekD: 1, peekS: 1, flick: 0, stare: 0, msgT: 0, msg: '', msgX: .5, msgY: .5, heartT: 0, nextWave: 60, wi: 0, minis: M.minis.slice(), nextMini: M.every || 0, bossAt: M.boss, bossWarn: false, eliteT: 50, hm: 1, kbR: 1, spdMul: 1, dmgMul: 1, minisKilled: 0, bossKills: 0, evos: 0, seen: {}, by: {}, styleMax: 0, dare: Object.assign({}, SV.dares), zone: null, zones: {}, mbOrder: Object.keys(MB).filter(k => !MB[k].final).sort(() => Math.random() - 0.5), mbi: 0, earned: 0 });
+  P = { kind: 'player', x: 2400, y: 1810, sy: 1810, r: 13, hp: 100, maxhp: 100, vx: 0, vy: 0, face: 1, back: false, aim: -Math.PI / 2, inv: 0, lvl: 1, xp: 0, need: need(1), up: {}, walk: 0, moving: false, tm: { gloss: 0.5, bomb: 1, ball: 0.6, storm: 1.4, aura: 0, spray: 0, scissors: 0.8, mirror: 1, musicbox: 1.5, whip: 0.6, bubble: 0.8, zap: 1, trail: 0, turret: 0.5, alarm: 12 }, whipB: 0, whipF: 1, mend: 0, charms: [], auraR: 0, sprayR: 0, sprayA: 0, shieldUp: false, shieldT: 3, revives: 0, rerolls: 0, blinkT: 3 };
   P.up[G.hero.start] = 1;
   const sh = SV.shop, hm = G.hero.mod;
+  if (sh.start) { const c = Object.values(IT).filter(u => u.k !== 'W' && u.id !== 'coupon' && itemOk(u.id)); P.up[pick(c).id] = 1; }
   P.revives = (sh.revive || 0) + (hm.revive || 0); P.rerolls = (sh.reroll || 0) + (hm.reroll || 0);
   recalc(); P.hp = P.maxhp; buildPlayerArt(P.up, G.hero); syncPets();
   for (let i = 0; i < (sh.head || 0); i++) { P.lvl++; P.need = need(P.lvl); G.pending++; }
@@ -153,6 +184,13 @@ function recalc() {
   S.echo = 0.1 * lv('scrunchie'); S.venom = 0.2 * lv('lipstick'); S.batt = lv('battery'); S.thorns = [0, 20, 35, 50, 65, 80][lv('backpack')];
   S.shieldCd = [0, 18, 16, 14, 12, 10][lv('shield')];
   P.maxhp = 100 + 20 * lv('locket') + 10 * n('vit') + (hm.hp || 0);
+  const st = c => styleTier(c)[1], mk = st('MAKEUP'), of = st('OUTFIT'), cm = st('CHARM'), ty = st('TOY'), pt = st('PET');
+  S.dmg *= [1, 1.12, 1.3][mk] * (1 + (hm.dmg || 0)); S.spd += [0, 0.08, 0.16][of]; S.armor *= [1, 0.92, 0.82][of]; S.crit += [0, 0.08, 0.18][cm] + 0.02 * n('critp'); S.luck += [0, 1, 2][cm]; S.cd *= [1, 0.92, 0.82][ty];
+  S.area *= (1 + 0.04 * n('area')) * (1 + (hm.area || 0));
+  S.pet = (1 + 0.18 * lv('bracelet')) * [1, 1.25, 1.6][pt]; S.petFast = pt === 2 ? 0.75 : 1;
+  S.critM = 2 + 0.25 * lv('tiara'); S.sour = 0.1 * lv('sour'); S.mend = 6 * lv('plaster'); S.invB = 0.12 * lv('plaster'); S.night = 0.06 * lv('nightlight'); S.alarm = [0, 34, 30, 26, 22, 18][lv('alarm')]; S.cards = lv('coupon') ? 4 : 3;
+  if (G.dare.glass) P.maxhp = Math.round(P.maxhp * 0.5);
+  G.styleMax = Math.max(G.styleMax, mk, of, cm, ty, pt); if (P.hp > P.maxhp) P.hp = P.maxhp;
 }
 function syncPets() {
   const want = { kitty: [0, 1, 1, 2, 2, 3, 5][lv('kitty')], bunny: [0, 1, 1, 2, 2, 3, 4][lv('bunny')] };
@@ -163,6 +201,7 @@ function applyUpgrade(id) {
   if (id.slice(0, 4) === 'evo:') { evolve(id.slice(4)); return; }
   P.up[id] = lv(id) + 1; recalc();
   if (id === 'locket') heal(25);
+  if (id === 'coupon') P.rerolls++;
   if (id === 'shield' && lv(id) === 1) { P.shieldUp = true; }
   if (id === 'ears' || id === 'bow' || id === 'boots' || id === 'choker') buildPlayerArt(P.up, G.hero);
   syncPets();
@@ -205,6 +244,14 @@ function addNum(x, y, v, style = 0) { if (nums.length > 70 || (nums.length > 40 
 function ring(x, y, r0, r1, d, col, lw = 5) { rings.push({ x, y, r0, r1, t: 0, d, col, lw, dead: false }); }
 function flashAt(x, y, r, d, col = 'white') { flashes.push({ x, y, r, t: 0, d, col, dead: false }); }
 function shake(n) { G.shake = Math.max(G.shake, n); }
+const WHISPERS = ['we see you', 'play with us', 'stay forever', "don't turn around", 'you woke us', 'one of us', 'behind you', 'she is coming', "you can't leave", 'we only pretend to sleep'];
+function scareEvent() {
+  const r = Math.random();
+  if (r < 0.3 && !G.bosses.length) { G.peekD = G.peek = 2.4; G.peekS = Math.random() < 0.5 ? -1 : 1; G.flick = 0.5; sfx('whisper'); }
+  else if (r < 0.55) { G.flick = 1.5; G.stare = 1.6; sfx('giggle'); }
+  else if (r < 0.8) { G.msg = pick(WHISPERS); G.msgT = 3.2; G.msgX = rand(0.25, 0.75); G.msgY = rand(0.3, 0.75); sfx('whisper'); }
+  else { G.stare = 2.6; G.flick = 0.35; sfx('giggle'); }
+}
 function lightning() { G.flash = 1; G.flash2 = 0.2; sfx('thunder'); }
 
 // ---------- enemies ----------
@@ -233,9 +280,10 @@ function spawnMini(id, x, y) {
 function hurt(e, dmg, ax, ay, kb = 120, dot = false) {
   if (e.dead) return;
   let crit = false; dmg *= S.dmg; if (e.lit && S.batt) dmg *= 1 + 0.06 * S.batt;
-  if (!dot && Math.random() < S.crit) { dmg *= 2; crit = true; }
+  if (S.sour && (e.slow > 0 || e.poisT > 0)) dmg *= 1 + S.sour;
+  if (!dot && Math.random() < S.crit) { dmg *= S.critM; crit = true; }
   dmg = Math.max(1, Math.round(dmg * rand(0.88, 1.12)));
-  e.hp -= dmg; e.flash = 0.09; G.dmgDone += dmg;
+  e.hp -= dmg; e.flash = 0.09; G.dmgDone += dmg; G.by[SRC] = (G.by[SRC] || 0) + dmg;
   if (kb) { const dx = e.x - ax, dy = e.y - ay, d = Math.hypot(dx, dy) || 1, k = kb / e.mass / G.kbR; e.kx += dx / d * k; e.ky += dy / d * k; }
   if (S.venom && !dot) { e.pois += dmg * S.venom / S.dmg; e.poisT = 2; }
   addNum(e.x, e.y - e.hgt, dmg, crit ? 1 : 0); if (!dot) sfx('hit');
@@ -300,7 +348,7 @@ function updEnemies(dt) {
   for (const e of enemies) {
     if (e.dead) continue;
     e.t += dt; if (e.flash > 0) e.flash -= dt; if (e.ch > 0) e.ch -= dt;
-    if (e.poisT > 0) { const q = Math.min(dt, e.poisT); e.poisT -= q; e._pa = (e._pa || 0) + e.pois * q / 2; if (e.poisT <= 0) { e.pois = 0; } if (e._pa >= 3 || e.poisT <= 0) { const v = e._pa; e._pa = 0; if (v >= 1) hurt(e, v, 0, 0, 0, true); if (e.dead) continue; } }
+    if (e.poisT > 0) { const q = Math.min(dt, e.poisT); e.poisT -= q; e._pa = (e._pa || 0) + e.pois * q / 2; if (e.poisT <= 0) { e.pois = 0; } if (e._pa >= 3 || e.poisT <= 0) { const v = e._pa; e._pa = 0; if (v >= 1) { SRC = 'lipstick'; hurt(e, v, 0, 0, 0, true); } if (e.dead) continue; } }
     if (e.st === 'jump') {
       e.jt += dt / e.jd; const k = Math.min(1, e.jt); e.x = lerp(e.jx0, e.jx1, k); e.y = lerp(e.jy0, e.jy1, k); e.z = Math.sin(Math.PI * k) * e.jh; e.sy = Math.max(e.y, e.jy1) + 80;
       if (e.jt >= 1) { e.st = 'chase'; e.z = 0; e.jh = 34; part(e.x, e.y, 0, -10, 0.3, 22, A.puff, false, 0, 0, 40); if (e.boss) { sfx('stomp'); shake(14); } }
@@ -320,6 +368,7 @@ function updEnemies(dt) {
       case 'blink': sp = 0; if (e.fade > 0) e.fade -= dt; e.dashT -= dt; if (e.dashT <= 0) { e.dashT = 2.6; part(e.x, e.y - 20, 0, 0, 0.4, 50, A.puff, false, 0, 0, 40); const a = rand(TAU), r = rand(80, 150); e.x = clamp(P.x + Math.cos(a) * r, 20, W - 20); e.y = clamp(P.y + Math.sin(a) * r * 0.8, 20, H - 20); e.fade = 0.65; part(e.x, e.y - 20, 0, 0, 0.4, 50, A.puff, false, 0, 0, 40); } break;
       case 'boom': if (e.fuse > 0) { e.fuse -= dt; sp = 0; e.flash = 0.04; if (e.fuse <= 0) { e.dead = true; burst(e.x, e.y - 20, 'red', 6); enemyBlast(e.x, e.y, 92, e.dmg * 1.5); continue; } } else if (d < 72) { e.fuse = 0.65; ezone(e.x, e.y, 92, 0.65, 0); } break;
     }
+    if (S.night && d < 185 && e.slow <= 0.06 && !e.boss) { e.slow = 0.1; e.slowF = 1 - S.night; }
     if (e.slow > 0) { e.slow -= dt; sp *= e.slowF; }
     if (e.lit && S.batt) sp *= litSlow;
     e.over = e.boss ? null : shelfAt(e.x, e.y); if (e.over) sp *= 0.55;
@@ -346,13 +395,13 @@ function pushAway(r, f) { for (const e of enemies) { if (e.dead || e.boss) conti
 function damagePlayer(d, src) {
   if (P.inv > 0 || G.state !== 'play') return;
   if (Math.random() < S.dodge) { addNum(P.x, P.y - 78, 'MISS', 3); P.inv = 0.4; return; }
-  if (S.thorns) { forNear(P.x, P.y, 115, e => hurt(e, S.thorns, P.x, P.y, 320)); ring(P.x, P.y, 20, 115, 0.3, 'butter', 5); }
+  if (S.thorns) { SRC = 'backpack'; forNear(P.x, P.y, 115, e => hurt(e, S.thorns, P.x, P.y, 320)); ring(P.x, P.y, 20, 115, 0.3, 'butter', 5); }
   if (P.shieldUp) { P.shieldUp = false; P.shieldT = S.shieldCd; P.inv = 0.7; ring(P.x, P.y, 30, 140, 0.4, 'mint', 7); sfx('squish'); pushAway(140, 480); addNum(P.x, P.y - 78, 'BLOCK', 3); return; }
   d = Math.max(1, d * G.dmgMul * S.armor);
-  P.hp -= d; P.inv = 0.8; G.hurt = 1; shake(9); sfx('hurt'); addNum(P.x, P.y - 78, '-' + Math.round(d), 2);
+  P.hp -= d; P.inv = 0.8 + S.invB; P.mend += S.mend; G.hurt = 1; shake(9); sfx('hurt'); addNum(P.x, P.y - 78, '-' + Math.round(d), 2);
   pushAway(130, 420); ring(P.x, P.y, 20, 130, 0.3, 'red', 4);
   if (P.hp <= 0) {
-    if (P.revives > 0) { P.revives--; P.hp = P.maxhp * 0.5; P.inv = 2.5; pushAway(420, 900); forNear(P.x, P.y, 300, e => hurt(e, 80 + G.t * 0.3, P.x, P.y, 0)); ring(P.x, P.y, 30, 420, 0.6, 'butter', 10); flashAt(P.x, P.y, 700, 0.7, 'warm'); G.flash = 0.8; banner('NOT TONIGHT!', 'Extra life used'); sfx('level'); return; }
+    if (P.revives > 0) { P.revives--; P.hp = P.maxhp * 0.5; P.inv = 2.5; pushAway(420, 900); SRC = 'other'; forNear(P.x, P.y, 300, e => hurt(e, 80 + G.t * 0.3, P.x, P.y, 0)); ring(P.x, P.y, 30, 420, 0.6, 'butter', 10); flashAt(P.x, P.y, 700, 0.7, 'warm'); G.flash = 0.8; banner('NOT TONIGHT!', 'Extra life used'); sfx('level'); return; }
     P.hp = 0; G.state = 'dying'; G.stateT = 0; AU.mode = 'off'; hideHud();
   }
 }
@@ -392,11 +441,13 @@ function doWave() {
 function nearSpot(dist) { let dx = 2400 - P.x, dy = 1800 - P.y, d = Math.hypot(dx, dy); if (d < 60) { dx = 0; dy = -1; d = 1; } return [clamp(P.x + dx / d * dist, 140, W - 140), clamp(P.y + dy / d * dist * 0.85, 180, H - 100)]; }
 function director(dt) {
   const t = G.t, m = t / 60, M = G.mode;
-  const lm = Math.max(0, m - 5); G.hm = 1 + m * 0.38 + m * m * 0.045 + lm * lm * lm * 0.05; G.spdMul = 1 + Math.min(0.3, t / 900 * 0.3) + Math.max(0, t - 600) / 600 * 0.5; G.dmgMul = 1 + Math.min(3, t / 600 * 0.7);
-  G.cap = Math.min(250, 24 + t * 0.62); G.kbR = Math.sqrt(G.hm);
+  const lm = Math.max(0, m - 5); G.hm = 1 + m * 0.38 + m * m * 0.045 + lm * lm * lm * 0.05; G.spdMul = (1 + Math.min(0.3, t / 900 * 0.3) + Math.max(0, t - 600) / 600 * 0.5) * (G.dare.rush ? 1.2 : 1); G.dmgMul = 1 + Math.min(3, t / 600 * 0.7);
+  G.cap = Math.min(250, 24 + t * 0.62) * (G.dare.swarm ? 1.3 : 1); G.kbR = Math.sqrt(G.hm);
   if (!G.bosses.some(b => b.mb.final)) AU.layer = t < 50 ? 0 : t < 125 ? 1 : 2;
   G.dpsT += dt; if (G.dpsT >= 10) { G.dps = lerp((G.dmgDone - G.dpsLast) / G.dpsT, G.dps, 0.4); G.dpsLast = G.dmgDone; G.dpsT = 0; }
   G.lightT -= dt; if (G.lightT <= 0) { G.lightT = rand(24, 40); lightning(); }
+  G.scareT -= dt; if (G.scareT <= 0 && G.blackout <= 0) { G.scareT = rand(26, 46); scareEvent(); }
+  if (P.hp < P.maxhp * 0.3) { G.heartT -= dt; if (G.heartT <= 0) { G.heartT = 0.75; sfx('heart'); } }
   if (t >= G.nextWave) { G.nextWave += 60; doWave(); }
   if (G.minis.length && t >= G.minis[0]) { G.minis.shift(); const p = nearSpot(420); spawnMini(G.mbOrder[G.mbi++ % G.mbOrder.length], p[0], p[1]); if (t > 700) { const q = nearSpot(-420); spawnMini(G.mbOrder[G.mbi++ % G.mbOrder.length], q[0], q[1]); } }
   if (M.every && t >= G.nextMini + M.every) { G.nextMini += M.every; const p = nearSpot(420); spawnMini(G.mbOrder[G.mbi++ % G.mbOrder.length], p[0], p[1]); }
@@ -404,7 +455,7 @@ function director(dt) {
   if (G.bossAt && t >= G.bossAt) { G.bossAt = 0; const p = nearSpot(430); spawnMini('madame', p[0], p[1]); }
   if (M.len < 1e9 && t > M.len - 24 && !G.almost) { G.almost = true; banner('ALMOST DAWN', 'Hold on'); }
   if (G.blackout > 0) return;
-  G.spawnAcc += (Math.min(9, 1.5 + t * 0.026) + Math.max(0, t - 300) * 0.013) * dt * (G.bosses.length ? 0.6 : 1);
+  G.spawnAcc += (Math.min(9, 1.5 + t * 0.026) + Math.max(0, t - 300) * 0.013) * dt * (G.bosses.length ? 0.6 : 1) * (G.dare.swarm ? 1.4 : 1);
   while (G.spawnAcc >= 1) { G.spawnAcc -= 1; if (enemies.length < G.cap) spawnNear(); }
   G.eliteT -= dt; if (G.eliteT <= 0) { G.eliteT = Math.max(18, 45 - t / 40); const unl = unlocked(), a = rand(TAU); spawnEnemy(wpick(SPAWNW, unl), clamp(P.x + Math.cos(a) * 620, 30, W - 30), clamp(P.y + Math.sin(a) * 480, 30, H - 30), { pop: true, elite: true }); }
   G.boxT -= dt;
@@ -430,7 +481,7 @@ function openBox(b) {
   const r = Math.random(), low = P.hp < P.maxhp * 0.55;
   if (low || r < 0.3) { heal(40); addNum(b.x, b.y - 60, 'CUPCAKE!', 3); }
   else if (r < 0.65) { for (const g of gems) g.pull = true; addNum(b.x, b.y - 60, 'GEM MAGNET!', 3); }
-  else { addNum(b.x, b.y - 60, 'GLITTER STORM!', 3); G.flash = 0.7; for (const e of enemies) { if (e.dead || e.st === 'jump') continue; if (Math.abs(e.x - P.x) < 760 && Math.abs(e.y - P.y) < 520) hurt(e, e.boss ? 150 : 60 + G.t * 0.4, P.x, P.y, 260); } }
+  else { addNum(b.x, b.y - 60, 'GLITTER STORM!', 3); G.flash = 0.7; SRC = 'other'; for (const e of enemies) { if (e.dead || e.st === 'jump') continue; if (Math.abs(e.x - P.x) < 760 && Math.abs(e.y - P.y) < 520) hurt(e, e.boss ? 150 : 60 + G.t * 0.4, P.x, P.y, 260); } }
 }
 
 // ---------- weapons ----------
@@ -444,7 +495,7 @@ function explode(x, y, rad, dmg, col) {
 const echo = (tm, k) => { if (S.echo && Math.random() < S.echo) tm[k] = Math.min(tm[k], 0.16); };
 function updWeapons(dt) {
   const tm = P.tm; let L;
-  if ((L = lv('gloss'))) {
+  if ((L = lv('gloss'))) { SRC = 'gloss';
     tm.gloss -= dt;
     if (tm.gloss <= 0) {
       const n = [0, 1, 1, 2, 2, 3, 3][L], tg = nearestList(P.x, P.y, 540, n);
@@ -454,7 +505,7 @@ function updWeapons(dt) {
       } else tm.gloss = 0.12;
     }
   }
-  if ((L = lv('bomb'))) {
+  if ((L = lv('bomb'))) { SRC = 'bomb';
     tm.bomb -= dt;
     if (tm.bomb <= 0) {
       const n = [0, 1, 1, 2, 2, 3, 4][L], tg = nearestList(P.x, P.y, 430, 12);
@@ -462,7 +513,7 @@ function updWeapons(dt) {
       else tm.bomb = 0.3;
     }
   }
-  if ((L = lv('ball'))) {
+  if ((L = lv('ball'))) { SRC = 'ball';
     tm.ball -= dt;
     if (tm.ball <= 0) {
       const n = [0, 1, 1, 1, 2, 2, 3][L], tg = nearestList(P.x, P.y, 460, n);
@@ -470,7 +521,7 @@ function updWeapons(dt) {
       else tm.ball = 0.3;
     }
   }
-  if ((L = lv('storm'))) {
+  if ((L = lv('storm'))) { SRC = 'storm';
     tm.storm -= dt;
     if (tm.storm <= 0) {
       const n = [0, 2, 3, 3, 5, 7, 10][L], tg = nearestList(P.x, P.y, 520, 40);
@@ -478,7 +529,7 @@ function updWeapons(dt) {
       else tm.storm = 0.3;
     }
   }
-  if ((L = lv('scissors'))) {
+  if ((L = lv('scissors'))) { SRC = 'scissors';
     tm.scissors -= dt;
     if (tm.scissors <= 0) {
       const n = [0, 1, 1, 2, 2, 3, 3][L], tg = nearestList(P.x, P.y, 420, n);
@@ -486,7 +537,7 @@ function updWeapons(dt) {
       else tm.scissors = 0.3;
     }
   }
-  if ((L = lv('mirror'))) {
+  if ((L = lv('mirror'))) { SRC = 'mirror';
     tm.mirror -= dt;
     if (tm.mirror <= 0) {
       const n = [0, 1, 1, 1, 2, 2, 3][L], tg = nearestList(P.x, P.y, 560, n);
@@ -501,7 +552,7 @@ function updWeapons(dt) {
       } else tm.mirror = 0.3;
     }
   }
-  if ((L = lv('musicbox'))) {
+  if ((L = lv('musicbox'))) { SRC = 'musicbox';
     tm.musicbox -= dt;
     if (tm.musicbox <= 0) {
       tm.musicbox = [0, 3.2, 3.2, 2.8, 2.8, 2.4, 1.8][L] * S.cd; echo(tm, 'musicbox');
@@ -511,35 +562,89 @@ function updWeapons(dt) {
       for (let i = 0; i < 8; i++) { const a = i * TAU / 8; part(P.x + Math.cos(a) * 30, P.y - 20 + Math.sin(a) * 24, Math.cos(a) * R * 1.6, Math.sin(a) * R * 1.3, 0.6, 20, A.note, true, 0, 2); }
     }
   }
+  if ((L = lv('whip'))) {
+    tm.whip -= dt;
+    if (P.whipB > 0) { P.whipB -= dt; if (P.whipB <= 0) crack(-P.whipF, L); }
+    if (tm.whip <= 0) { tm.whip = [0, 1.5, 1.5, 1.25, 1.25, 1.05, 0.8][L] * S.cd; echo(tm, 'whip'); { const ne = nearestList(P.x, P.y, 300, 1)[0]; P.whipF = ne ? (ne.x >= P.x ? 1 : -1) : P.face; } crack(P.whipF, L); if (L === 6) crack(-P.whipF, L); else if (L >= 4) P.whipB = 0.22; }
+  }
+  if ((L = lv('bubble'))) {
+    tm.bubble -= dt;
+    if (tm.bubble <= 0) {
+      tm.bubble = [0, 1.7, 1.7, 1.7, 1.7, 1.35, 0.7][L] * S.cd; echo(tm, 'bubble'); const n = [0, 2, 3, 3, 4, 5, 6][L];
+      for (let i = 0; i < n; i++) { const a = rand(TAU), sp = rand(70, 150); shots.push({ k: 'bub', x: P.x, y: P.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.8, life: L === 6 ? 5 : 3.4, r: (L === 6 ? 24 : 16) * S.area, rad: [0, 48, 48, 62, 62, 62, 92][L] * S.area, dmg: [0, 24, 24, 34, 34, 46, 68][L], evo: L === 6, t: rand(TAU), dead: false }); }
+    }
+  }
+  if ((L = lv('zap'))) {
+    SRC = 'zap'; tm.zap -= dt;
+    if (tm.zap <= 0) {
+      const first = nearestList(P.x, P.y, 400, 1)[0];
+      if (first) {
+        tm.zap = [0, 1.9, 1.9, 1.6, 1.6, 1.3, 0.8][L] * S.cd; echo(tm, 'zap'); sfx('zap'); const n = [0, 3, 4, 4, 6, 8, 14][L], dmg = [0, 18, 18, 26, 26, 34, 50][L], hit = []; let cur = first, px = P.x, py = P.y;
+        while (cur && hit.length < n) { const c = cur; hit.push(c); bolts.push({ x1: px, y1: py, x2: c.x, y2: c.y, t: 0, d: 0.2, sd: rand(9), dead: false }); px = c.x; py = c.y; hurt(c, dmg, px, py, 40); if (L === 6 && !c.dead) { c.slow = 0.7; c.slowF = 0; } cur = nearestList(px, py, 230, 1, hit)[0]; }
+      } else tm.zap = 0.25;
+    }
+  }
+  if ((L = lv('trail'))) {
+    tm.trail -= dt;
+    if (tm.trail <= 0) { tm.trail = P.moving ? 0.2 : 0.6; if (fields.length < 46) fields.push({ x: P.x, y: P.y, r: [0, 34, 34, 44, 44, 54, 76][L] * S.area, t: 0, d: [0, 2, 2, 2.8, 2.8, 3.2, 4][L], dps: [0, 16, 24, 24, 34, 48, 80][L], tick: 0.15, src: 'trail', q: true, slow: L === 6, rb: L === 6, dead: false }); }
+  }
+  if ((L = lv('turret'))) {
+    tm.turret -= dt;
+    if (tm.turret <= 0 && toys.length < [0, 1, 1, 2, 2, 2, 4][L]) { tm.turret = [0, 3, 3, 2.5, 2.5, 2, 1][L]; toys.push({ kind: 'toy', x: P.x, y: P.y, sy: P.y, t: 0, life: [0, 7, 7, 7, 7, 10, 12][L], cd: 0.3, face: P.face, dead: false }); part(P.x, P.y - 10, 0, -10, 0.3, 26, A.puff, false, 0, 0, 40); sfx('squish'); }
+    for (const o of toys) {
+      o.t += dt; o.cd -= dt; if (o.t > o.life) { o.dead = true; burst(o.x, o.y - 20, 'butter', 4); continue; }
+      if (o.cd <= 0) { const e = nearestList(o.x, o.y, 430, 1)[0]; if (e) { SRC = 'turret'; o.cd = (L === 6 ? 0.24 : 0.45) * S.cd; o.face = e.x > o.x ? 1 : -1; bolts.push({ x1: o.x + o.face * 10, y1: o.y - 8, x2: e.x, y2: e.y, t: 0, d: 0.1, st: true, dead: false }); hurt(e, [0, 22, 30, 30, 42, 54, 58][L] * S.pet, o.x, o.y, 90); } else o.cd = 0.2; }
+    }
+    compact(toys);
+  }
+  if (S.alarm) {
+    tm.alarm -= dt;
+    if (tm.alarm <= 0) { tm.alarm = S.alarm; forNear(P.x, P.y, 620, e => { e.slow = e.boss ? 0.8 : 1.6; e.slowF = e.boss ? 0.5 : 0; }); ring(P.x, P.y, 30, 620, 0.6, 'mint', 8); sfx('chime'); addNum(P.x, P.y - 90, 'SNOOZE!', 3); }
+  }
   P.sprayR = 0;
-  if ((L = lv('spray'))) {
-    const R = [0, 150, 172, 172, 204, 204, 280][L] * S.area, ha = [0, 0.42, 0.42, 0.5, 0.5, 0.56, 0.8][L]; P.sprayR = R; P.sprayA = ha; tm.spray -= dt;
-    if (tm.spray <= 0) { tm.spray = 0.28 * S.cd; const dmg = [0, 6, 6, 9, 9, 13, 25][L]; forNear(P.x, P.y, R, e => { if (Math.abs(wrapA(Math.atan2(e.y - P.y, e.x - P.x) - P.aim)) < ha) hurt(e, dmg, P.x, P.y, 70); }); }
-    for (let i = 0; i < 2; i++) { const a = P.aim + rand(-ha, ha), sp = R * 2.3; part(P.x + Math.cos(a) * 18, P.y - 24 + Math.sin(a) * 12, Math.cos(a) * sp, Math.sin(a) * sp * 0.85, 0.42, rand(14, 22), A.glow[L === 6 ? pick(['blue', 'mint', 'white']) : pick(['butter', 'pink', 'red'])], true, 0, 1.4, 46); }
+  if ((L = lv('spray'))) { SRC = 'spray';
+    const R = [0, 150, 172, 172, 204, 204, 280][L] * S.area, ha = [0, 0.42, 0.42, 0.5, 0.5, 0.56, 0.8][L]; P.sprayR = R; P.sprayA = ha; tm.spray -= dt; { const ne = nearestList(P.x, P.y, R * 1.15, 1)[0]; P.sprayDir = (P.sprayDir || 0) + wrapA((ne ? Math.atan2(ne.y - P.y, ne.x - P.x) : P.aim) - (P.sprayDir || 0)) * (1 - Math.exp(-7 * dt)); }
+    if (tm.spray <= 0) { tm.spray = 0.28 * S.cd; const dmg = [0, 12, 12, 17, 17, 24, 46][L]; forNear(P.x, P.y, R, e => { if (Math.abs(wrapA(Math.atan2(e.y - P.y, e.x - P.x) - P.sprayDir)) < ha) hurt(e, dmg, P.x, P.y, 70); }); }
+    for (let i = 0; i < 2; i++) { const a = P.sprayDir + rand(-ha, ha), sp = R * 2.3; part(P.x + Math.cos(a) * 18, P.y - 24 + Math.sin(a) * 12, Math.cos(a) * sp, Math.sin(a) * sp * 0.85, 0.42, rand(14, 22), A.glow[L === 6 ? pick(['blue', 'mint', 'white']) : pick(['butter', 'pink', 'red'])], true, 0, 1.4, 46); }
   }
   P.charms.length = 0;
-  if ((L = lv('charm'))) {
-    const n = [0, 2, 3, 3, 4, 6, 9][L], R = [0, 80, 80, 96, 96, 112, 126][L] * S.area, dmg = [0, 8, 8, 13, 13, 18, 30][L];
+  if ((L = lv('charm'))) { SRC = 'charm';
+    const n = [0, 2, 3, 3, 4, 6, 9][L], R = [0, 80, 80, 96, 96, 112, 126][L] * S.area, dmg = [0, 15, 15, 23, 23, 32, 50][L] * S.pet;
     for (let i = 0; i < n; i++) {
-      const a = G.t * 2.7 * (L === 6 && i % 2 ? -1 : 1) + i * TAU / n, rr2 = L === 6 && i % 2 ? R * 0.62 : R, x = P.x + Math.cos(a) * rr2, y = P.y + Math.sin(a) * rr2 * 0.8; P.charms.push(x, y);
-      forNear(x, y, 15 * S.area, e => { if (e.ch <= 0) { hurt(e, dmg, P.x, P.y, 170); e.ch = 0.4; part(x, y - 20, 0, 0, 0.2, 26, A.spark.white, true); } });
+      const a = G.t * 3.4 * (L === 6 && i % 2 ? -1 : 1) + i * TAU / n, rr2 = L === 6 && i % 2 ? R * 0.62 : R, x = P.x + Math.cos(a) * rr2, y = P.y + Math.sin(a) * rr2 * 0.8; P.charms.push(x, y);
+      forNear(x, y, 20 * S.area, e => { if (e.ch <= 0) { hurt(e, dmg, P.x, P.y, 170); e.ch = 0.3; part(x, y - 20, 0, 0, 0.2, 26, A.spark.white, true); } });
       if (L === 6) for (const s of eshots) { const dx = s.x - x, dy = s.y - y; if (dx * dx + dy * dy < 26 * 26) { s.dead = true; part(s.x, s.y - 20, 0, 0, 0.2, 24, A.spark.butter, true); } }
     }
   }
   P.auraR = 0;
-  if ((L = lv('aura'))) {
+  if ((L = lv('aura'))) { SRC = 'aura';
     const R = [0, 96, 118, 118, 142, 142, 188][L] * S.area; P.auraR = R; tm.aura -= dt;
-    if (tm.aura <= 0) { tm.aura = 0.5 * S.cd; const dmg = [0, 5, 5, 9, 9, 15, 27][L], sl = [0, 0.8, 0.8, 0.8, 0.68, 0.68, 0.5][L]; forNear(P.x, P.y, R, e => { hurt(e, dmg, P.x, P.y, 0); e.slow = 0.7; e.slowF = sl; }); ring(P.x, P.y, R * 0.6, R, 0.4, L === 6 ? 'mint' : 'pink', 3); }
+    if (tm.aura <= 0) { tm.aura = 0.5 * S.cd; const dmg = [0, 10, 10, 17, 17, 27, 48][L], sl = [0, 0.8, 0.8, 0.8, 0.68, 0.68, 0.5][L]; forNear(P.x, P.y, R, e => { hurt(e, dmg, P.x, P.y, 0); e.slow = 0.7; e.slowF = sl; }); ring(P.x, P.y, R * 0.6, R, 0.4, L === 6 ? 'mint' : 'pink', 3); }
     if (Math.random() < dt * 14) { const a = rand(TAU), d = rand(R * 0.3, R); part(P.x + Math.cos(a) * d, P.y + Math.sin(a) * d * 0.8 - 10, rand(-10, 10), rand(-30, -10), rand(0.5, 0.9), rand(8, 14), A.spark[pick(['pink', 'mint'])], true); }
   }
   if (S.shieldCd && !P.shieldUp) { P.shieldT -= dt; if (P.shieldT <= 0) { P.shieldUp = true; ring(P.x, P.y, 60, 30, 0.3, 'mint', 4); } }
-  for (const f of fields) { f.t += dt; f.tick -= dt; if (f.tick <= 0) { f.tick = 0.4; forNear(f.x, f.y, f.r, e => hurt(e, f.dps * 0.4, f.x, f.y, 0, true)); } if (Math.random() < dt * 20) part(f.x + rand(-f.r, f.r) * 0.7, f.y + rand(-f.r, f.r) * 0.5, 0, -50, 0.5, rand(10, 18), A.spark[pick(['pink', 'butter', 'mint', 'lilac'])], true); if (f.t > f.d) f.dead = true; }
+  for (const f of fields) { f.t += dt; f.tick -= dt; if (f.tick <= 0) { f.tick = 0.4; SRC = f.src || 'bomb'; forNear(f.x, f.y, f.r, e => { hurt(e, f.dps * 0.4, f.x, f.y, 0, true); if (f.slow && !e.dead) { e.slow = 0.5; e.slowF = 0.55; } }); } if (Math.random() < dt * (f.q ? 3 : 20)) part(f.x + rand(-f.r, f.r) * 0.7, f.y + rand(-f.r, f.r) * 0.5, 0, -50, 0.5, rand(10, 18), A.spark[pick(['pink', 'butter', 'mint', 'lilac'])], true); if (f.t > f.d) f.dead = true; }
   compact(fields);
   for (const b of beams) { b.t += dt; if (b.t >= b.d) b.dead = true; } compact(beams);
+  for (const b of bolts) { b.t += dt; if (b.t >= b.d) b.dead = true; } compact(bolts);
 }
+function crack(dir, L) {
+  const R = [0, 150, 150, 180, 180, 210, 270][L] * S.area, hh = (L === 6 ? 100 : 62) * S.area, dmg = [0, 36, 48, 48, 64, 64, 110][L]; SRC = 'whip';
+  forNear(P.x + dir * R / 2, P.y, R / 2 + hh, e => { const dx = (e.x - P.x) * dir; if (dx > -12 && dx < R + e.r && Math.abs(e.y - P.y) < hh + e.r) hurt(e, dmg, P.x, P.y, 210); });
+  beams.push({ x: P.x, y: P.y + 8, a: dir > 0 ? 0 : Math.PI, len: R, w: hh * 0.5, t: 0, d: 0.2, evo: L === 6, whip: true, dead: false }); sfx('shoot');
+}
+const SHOTSRC = { gloss: 'gloss', bomb: 'bomb', star: 'storm', scis: 'scissors', ball: 'ball', bub: 'bubble' };
 function updShots(dt) {
   for (const s of shots) {
     if (s.dead) continue;
+    SRC = SHOTSRC[s.k];
+    if (s.k === 'bub') {
+      s.t += dt; s.life -= dt; const k = Math.exp(-0.5 * dt); s.vx *= k; s.vy *= k; s.x += s.vx * dt; s.y += s.vy * dt + Math.sin(s.t * 3) * 8 * dt;
+      let hit = false; forNear(s.x, s.y, s.r, () => { hit = true; });
+      if (hit) { s.dead = true; forNear(s.x, s.y, s.rad, e => { hurt(e, s.dmg, s.x, s.y, 120); if (s.evo && !e.dead) { e.slow = 1.6; e.slowF = 0.3; } }); ring(s.x, s.y, s.rad * 0.3, s.rad, 0.25, 'mint', 3); sfx('pop'); for (let i = 0; i < 4; i++) part(s.x, s.y - 20, rand(-120, 120), rand(-120, 120), 0.3, rand(8, 14), A.spark.blue, true); }
+      else if (s.life <= 0) s.dead = true;
+      continue;
+    }
     if (s.k === 'gloss') {
       s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; if (s.life <= 0) { s.dead = true; continue; }
       if (Math.random() < dt * 30) part(s.x, s.y - 22, rand(-20, 20), rand(-20, 20), 0.25, rand(8, 13), A.glow.pink, true);
@@ -584,18 +689,18 @@ function updPets(dt) {
         p.face = hx > p.x ? 1 : -1; p.x = lerp(p.x, hx, f); p.y = lerp(p.y, hy, f); p.cd -= dt;
         if (p.cd <= 0) { const tg = nearestList(P.x, P.y, 340, 6); if (tg.length) { const e = pick(tg), dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1; p.st = 'dash'; p.vx = dx / d * 760; p.vy = dy / d * 760; p.dt = (d + 70) / 760; p.hit.length = 0; p.face = dx > 0 ? 1 : -1; sfx('meow'); } else p.cd = 0.25; }
       } else {
-        p.x += p.vx * dt; p.y += p.vy * dt; p.dt -= dt; const dmg = [0, 22, 32, 32, 34, 46, 60][L];
+        p.x += p.vx * dt; p.y += p.vy * dt; p.dt -= dt; SRC = 'kitty'; const dmg = [0, 22, 32, 32, 34, 46, 60][L] * S.pet;
         forNear(p.x, p.y, 20 * S.area, e => { if (p.hit.indexOf(e) < 0) { p.hit.push(e); hurt(e, dmg, p.x - p.vx, p.y - p.vy, 150); if (L === 6 && p.hit.length === 1) explode(e.x, e.y, 64 * S.area, 30, 'pink'); } });
         if (Math.random() < dt * 50) part(p.x, p.y - 18, 0, 0, 0.28, 26, A.glow.mint, true);
-        if (p.dt <= 0) { p.st = 'idle'; p.cd = [0, 1.4, 1.4, 1.4, 0.95, 0.95, 0.6][L] * S.cd; }
+        if (p.dt <= 0) { p.st = 'idle'; p.cd = [0, 1.4, 1.4, 1.4, 0.95, 0.95, 0.6][L] * S.cd * S.petFast; }
       }
     } else {
-      const L = lv('bunny'), i = bi++, sp = L >= 2 ? 540 : 400;
+      const L = lv('bunny'), i = bi++, sp = (L >= 2 ? 540 : 400) / S.petFast;
       if (p.tg && (p.tg.dead || p.tg.pull)) p.tg = null;
       if (!p.tg) { let best = null, bd = 600 * 600; for (const g of gems) { if (g.claim || g.pull || g.dead) continue; const d = (g.x - P.x) * (g.x - P.x) + (g.y - P.y) * (g.y - P.y); if (d < bd && d > S.pick * S.pick) { bd = d; best = g; } } if (best) { best.claim = true; p.tg = best; } }
       let tx, ty; if (p.tg) { tx = p.tg.x; ty = p.tg.y; } else { const a = p.t * 1.1 + i * 2.4 + 1; tx = P.x + Math.cos(a) * 60; ty = P.y + Math.sin(a) * 40; }
       const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy) || 1, st = Math.min(d, sp * dt); p.x += dx / d * st; p.y += dy / d * st; if (Math.abs(dx) > 4) p.face = dx > 0 ? 1 : -1;
-      if (p.tg && d < 16) { if (L === 6) { forNear(p.x, p.y, 72, e => hurt(e, 32, p.x, p.y, 200)); ring(p.x, p.y, 10, 72, 0.3, 'pink', 4); } collectGem(p.tg); p.tg = null; }
+      if (p.tg && d < 16) { if (L === 6) { SRC = 'bunny'; forNear(p.x, p.y, 72, e => hurt(e, 32 * S.pet, p.x, p.y, 200)); ring(p.x, p.y, 10, 72, 0.3, 'pink', 4); } collectGem(p.tg); p.tg = null; }
     }
     p.sy = p.y + 6;
   }
@@ -651,6 +756,7 @@ function updPlayer(dt) {
   }
   if (P.inv > 0) P.inv -= dt; P.sy = P.y; P.blinkT -= dt; if (P.blinkT < -0.12) P.blinkT = rand(2, 5);
   if (S.regen && P.hp < P.maxhp) P.hp = Math.min(P.maxhp, P.hp + S.regen * dt);
+  if (P.mend > 0) { const h = Math.min(P.mend, 5 * dt); P.mend -= h; P.hp = Math.min(P.maxhp, P.hp + h); }
 }
 function updFx(dt) {
   for (const p of parts) { p.life -= dt; if (p.life <= 0) { p.dead = true; continue; } p.vy += p.grav * dt; if (p.drag) { const k = Math.exp(-p.drag * dt); p.vx *= k; p.vy *= k; } p.x += p.vx * dt; p.y += p.vy * dt; p.size += p.grow * dt; }
@@ -663,6 +769,7 @@ function updFx(dt) {
   if (G.flash2 > 0) { G.flash2 -= dt; if (G.flash2 <= 0) G.flash = 0.8; }
   if (G.hurt > 0) G.hurt = Math.max(0, G.hurt - dt * 2.4);
   if (G.blackout > 0) G.blackout -= dt;
+  if (G.peek > 0) G.peek -= dt; if (G.flick > 0) G.flick -= dt; if (G.stare > 0) G.stare -= dt; if (G.msgT > 0) G.msgT -= dt;
 }
 const itemOk = id => BASE_ITEMS.indexOf(id) >= 0 || SV.items[id] || id === G.hero.start;
 function rollChoices() {
@@ -671,7 +778,7 @@ function rollChoices() {
   for (let i = pool.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[pool[i], pool[j]] = [pool[j], pool[i]]; }
   // favour things you already own a little, and weapons early
   pool.sort((a, b) => ((lv(b.id) > 0 ? 0.5 : 0) + (P.lvl <= 5 && b.k === 'W' ? 0.6 : 0) + Math.random()) - ((lv(a.id) > 0 ? 0.5 : 0) + (P.lvl <= 5 && a.k === 'W' ? 0.6 : 0) + Math.random()));
-  const ch = pool.slice(0, 3); while (ch.length < 3) ch.push(CAKE);
+  const ch = pool.slice(0, S.cards); while (ch.length < S.cards) ch.push(CAKE);
   const ev = evoReady(); if (ev.length) { const id = pick(ev); ch[0] = { id: 'evo:' + id, evoOf: id, k: 'E', name: IT[id].evo[1], cat: 'EVOLUTION', desc: IT[id].evo[2] }; }
   return ch;
 }
@@ -712,6 +819,6 @@ function sim(mode = 'short', heroId = 'luna', maxT = 1000) {
   G.bot = true; reset(mode, HEROES.find(h => h.id === heroId)); G.state = 'play';
   const log = []; let lastLog = 0, n = 0;
   while (G.state === 'play' && n++ < maxT * 60) { update(1 / 60); if (G.t - lastLog >= 60) { lastLog = G.t; log.push(`${Math.round(G.t)}s L${P.lvl} hp${Math.round(P.hp)} en${enemies.length} k${G.kills} dps${Math.round(G.dps)} hm${G.hm.toFixed(1)} mb${G.minisKilled} c${G.coins}`); } }
-  const r = { state: G.state, t: Math.round(G.t), lvl: P.lvl, kills: G.kills, hp: Math.round(P.hp), bossDead: G.bossDead, minis: G.minisKilled, coins: G.coins, evos: G.evos, up: Object.assign({}, P.up), log };
+  const r = { state: G.state, t: Math.round(G.t), lvl: P.lvl, kills: G.kills, hp: Math.round(P.hp), bossDead: G.bossDead, minis: G.minisKilled, coins: G.coins, evos: G.evos, up: Object.assign({}, P.up), by: Object.assign({}, G.by), log };
   G.bot = false; G.state = 'title'; return r;
 }
