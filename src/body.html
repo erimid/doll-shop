@@ -1,0 +1,34 @@
+<canvas id="game"></canvas>
+<div id="banner"><div id="bt"></div><div id="bs"></div></div>
+<div id="zt"></div>
+<div id="btns">
+  <button id="bMute" aria-label="Sound"><svg viewBox="0 0 20 20"><path d="M3 7h3l5-4v14l-5-4H3zM13.5 6.5a5 5 0 010 7l-1.2-1.2a3.3 3.3 0 000-4.6z"/></svg></button>
+  <button id="bPause" aria-label="Pause"><svg viewBox="0 0 20 20"><rect x="4" y="3" width="4.5" height="14" rx="1.5"/><rect x="11.5" y="3" width="4.5" height="14" rx="1.5"/></svg></button>
+</div>
+<div id="title" class="ov on">
+  <div class="purse"><i class="bi"></i><b class="cn">0</b></div>
+  <div class="logo">Doll Shop<small>SURVIVORS</small></div>
+  <p class="tag1">Locked in overnight. They wake up when you get close.</p>
+  <button id="bStart" class="btn">PLAY</button>
+  <div class="row"><button id="bShop" class="btn ghost">TOY CHEST</button><button id="bColl" class="btn ghost">COLLECTION</button></div>
+  <p class="hint">Drag anywhere to move &middot; attacks are automatic &middot; survive until dawn</p>
+</div>
+<div id="setup" class="ov panel">
+  <div class="ph"><button class="back" data-back>&lsaquo; BACK</button><h2>Who is locked in tonight?</h2><div class="purse"><i class="bi"></i><b class="cn">0</b></div></div>
+  <div class="setrow"><div id="heroes" class="heroes"></div><div id="heroInfo"></div></div>
+  <div id="modes" class="modes"></div>
+  <button id="bGo" class="btn">START THE NIGHT</button>
+</div>
+<div id="shop" class="ov panel">
+  <div class="ph"><button class="back" data-back>&lsaquo; BACK</button><h2>Toy Chest</h2><div class="purse"><i class="bi"></i><b class="cn">0</b></div></div>
+  <div class="tabs" id="shopTabs"><button data-t="up" class="on">POWER-UPS</button><button data-t="it">NEW ITEMS</button></div>
+  <div id="shopGrid" class="grid scroll"></div>
+</div>
+<div id="coll" class="ov panel">
+  <div class="ph"><button class="back" data-back>&lsaquo; BACK</button><h2>Collection</h2><div class="purse"><i class="bi"></i><b class="cn">0</b></div></div>
+  <div class="tabs" id="collTabs"><button data-t="dolls" class="on">DOLLS</button><button data-t="ach">STICKERS</button><button data-t="rec">RECORDS</button></div>
+  <div id="collGrid" class="grid scroll"></div>
+</div>
+<div id="levelup" class="ov"><div class="lvh"><span id="lvn">LEVEL 2</span><b>Pick an upgrade</b></div><div id="cards" class="cards"></div><div class="lvf"><div id="build" class="build"></div><button id="bReroll" class="btn ghost">REROLL</button></div></div>
+<div id="pause" class="ov"><div class="big">PAUSED</div><div id="pBuild" class="build"></div><button id="bResume" class="btn">KEEP PLAYING</button><button id="bQuit" class="btn ghost">END THE NIGHT</button></div>
+<div id="res" class="ov"><div class="rays"></div><div class="big" id="rT"></div><p class="sub" id="rS"></p><div class="stats" id="rStats"></div><div id="rEarn" class="earnbox"></div><div class="row"><button id="bAgain" class="btn">PLAY AGAIN</button><button id="bResShop" class="btn ghost">TOY CHEST</button><button id="bMenu" class="btn ghost">MENU</button></div></div>
