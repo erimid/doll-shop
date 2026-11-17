@@ -15,7 +15,7 @@ function resize() {
 }
 function camera(dt) {
   let tx, ty, f;
-  if (G.state === 'title') { tx = 2400 + Math.cos(G.rt * 0.045) * 1500; ty = 1800 + Math.sin(G.rt * 0.07) * 1050; f = 1 - Math.exp(-1.2 * dt); }
+  if (G.state === 'title') { tx = W / 2 + Math.cos(G.rt * 0.045) * W * 0.31; ty = H / 2 + Math.sin(G.rt * 0.07) * H * 0.29; f = 1 - Math.exp(-1.2 * dt); }
   else { tx = P.x + P.vx * 0.2; ty = P.y + P.vy * 0.2 - 24; f = 1 - Math.exp(-6 * dt); }
   cam.x = lerp(cam.x, tx, f); cam.y = lerp(cam.y, ty, f);
   VIEW.cx = VIEW.w > W ? (W - VIEW.w) / 2 : clamp(cam.x - VIEW.w / 2, 0, W - VIEW.w);
@@ -26,6 +26,8 @@ function ambient(z, pre) {
   let r = 96, gg = 78, b = 170;
   if (G.state !== 'title') { const k = clamp(G.t / 240, 0, 1); r = lerp(60, 36, k); gg = lerp(48, 27, k); b = lerp(108, 78, k); }
   if (z) { r *= z.amb[0]; gg *= z.amb[1]; b *= z.amb[2]; }
+  if (MAP && MAP.dark) { r *= MAP.dark; gg *= MAP.dark; b *= MAP.dark; }
+  if (z && z.out > 0 && G.state !== 'title') { const q = 0.12 + 0.5 * Math.max(0, 1 - z.out) + (Math.random() < 0.04 ? 0.3 : 0); r *= q; gg *= q; b *= q * 1.2; }
   if (G.dare && G.dare.dark && G.state !== 'title') { r *= 0.38; gg *= 0.38; b *= 0.5; }
   if (G.flick > 0 && G.state !== 'title') { const q = Math.sin(G.rt * 47) > -0.2 || Math.random() < 0.3 ? 0.22 : 0.8; r *= q; gg *= q; b *= q; }
   if (G.blackout > 0) { const q = Math.min(1, G.blackout * 3) * (Math.random() < 0.07 ? 0.35 : 1); r = lerp(r, 8, q); gg = lerp(gg, 6, q); b = lerp(b, 22, q); }
@@ -36,7 +38,7 @@ function ambient(z, pre) {
   return `rgb(${Math.min(255, r | 0)},${Math.min(255, gg | 0)},${Math.min(255, b | 0)})`;
 }
 const RINGC = { red: '255,70,100', pink: '255,120,200', butter: '255,225,130', mint: '120,255,220' };
-const ZC = { antique: '#8a3450', boutique: '#d277aa', nursery: '#7fa8e6', plush: '#5fc0a0', main: '#8c76da', arcade: '#3f38b8', workshop: '#4f8a62', checkout: '#a58ad8', stock: '#50508a' };
+const ZC = { antique: '#8a3450', boutique: '#d277aa', nursery: '#7fa8e6', plush: '#5fc0a0', main: '#8c76da', arcade: '#3f38b8', workshop: '#4f8a62', checkout: '#a58ad8', stock: '#50508a', attic: '#8a6a4a', cellar: '#4a5a52' };
 const slotEye = t => t === 'mat' ? 44.5 : t === 'teddy' || t === 'robot' || t === 'jack' || t === 'manne' ? ET[t].eye : 32.5;
 const dl = [];
 function render(dt) {
@@ -49,9 +51,10 @@ function render(dt) {
   g.fillStyle = '#0c0718'; g.fillRect(0, 0, cw, ch);
   g.setTransform(vs, 0, 0, vs, ox, oy);
   // floor + wall
-  for (let y = Math.max(0, Math.floor(cy / 200) * 200); y < Math.min(H, cy + vh); y += 200) for (let x = Math.max(0, Math.floor(cx / 200) * 200); x < Math.min(W, cx + vw); x += 200) g.drawImage(A.tiles[zoneAt(x + 1, y + 1).id].c, x, y, 200.7, 200.7);
+  for (let y = Math.max(0, Math.floor(cy / 200) * 200); y < Math.min(H, cy + vh); y += 200) for (let x = Math.max(0, Math.floor(cx / 200) * 200); x < Math.min(W, cx + vw); x += 200) g.drawImage(A.tiles[zoneAt(x + 1, y + 1).th].c, x, y, 200.7, 200.7);
   g.fillStyle = 'rgba(12,6,30,.55)';
-  for (let i = 1; i < 3; i++) { const bx = i * ZW; if (bx > cx - 10 && bx < cx + vw + 10) g.fillRect(bx - 5, Math.max(0, cy), 10, vh + 10); const by = i * ZH; if (by > cy - 10 && by < cy + vh + 10) g.fillRect(cx, by - 5, vw, 10); }
+  for (let i = 1; i < MCOLS; i++) { const bx = i * ZW; if (bx > cx - 10 && bx < cx + vw + 10) g.fillRect(bx - 5, Math.max(0, cy), 10, vh + 10); }
+  for (let i = 1; i < MROWS; i++) { const by = i * ZH; if (by > cy - 10 && by < cy + vh + 10) g.fillRect(cx, by - 5, vw, 10); }
   if (cy < 0) {
     for (let x = Math.max(0, Math.floor(cx / 100) * 100); x < Math.min(W, cx + vw); x += 100) g.drawImage(A.wall.c, x, -WALLH, 100.7, WALLH + 0.5);
     for (const d of wallDecor) {
@@ -71,6 +74,7 @@ function render(dt) {
   for (const b of boxes) if (b.x > L && b.x < R && b.y > T && b.y < B) dl.push(b);
   for (const p of pets) dl.push(p);
   for (const o of toys) dl.push(o);
+  mapDL(dl, L, R, T, B);
   dl.push(P);
   dl.sort((a, b) => a.sy - b.sy);
   // ground effects + shadows
@@ -83,6 +87,7 @@ function render(dt) {
     else if (k === 'player' || k === 'box') ds(g, A.shadow, o.x, o.y, 1.3);
     else if (k === 'pet') ds(g, A.shadow, o.x, o.y + 6, 0.8);
     else if (k === 'toy') ds(g, A.shadow, o.x, o.y, 1);
+    else if (k === 'hunter' || k === 'lost') mapShadow(g, o);
     else if (k === 'lair') { ds(g, A.shadow, o.x, o.y, 2.4); if (!o.used) { g.globalAlpha = 0.35 + 0.2 * Math.sin(rt * 3); g.strokeStyle = '#ff3355'; g.lineWidth = 3; g.setLineDash([10, 8]); ell(g, o.x, o.y, 62, 50); g.stroke(); g.setLineDash([]); g.globalAlpha = 1; } }
     else { g.fillStyle = 'rgba(10,5,30,.4)'; rr(g, o.x - 6, o.y + o.h - 8, o.w + 12, 18, 8); g.fill(); }
   }
@@ -104,7 +109,7 @@ function render(dt) {
       if (o.fade > 0) g.globalAlpha = clamp(1 - o.fade / 0.65, 0.1, 1) * 0.9;
       ds(g, s, o.x, o._dy, o.sc / sq, o.sc * sq); g.globalAlpha = 1;
     } else if (k === 'shelf') {
-      ds(g, A.shelves[o.z.id][o.v], o.x, o.y);
+      ds(g, A.shelves[o.z.th][o.v], o.x, o.y);
       for (const sl of o.slots) {
         if (sl.state === 2) continue; const sets = A.doll[sl.type], set = sets[sl.vr % sets.length], m = sl.type === 'mat';
         if (sl.state === 1) ds(g, m ? set.R : set.sit, sl.x + rand(-2.2, 2.2), sl.y + rand(-1.5, 1.5) - 2, m ? 0.62 : 0.7);
@@ -122,8 +127,10 @@ function render(dt) {
     else if (k === 'box') { const b = Math.abs(Math.sin(o.t * 3)) * 6; ds(g, o.gold ? A.gbox : A.box, o.x, o.y - b, (o.gold ? 1.15 : 1) * (1 + Math.sin(o.t * 6) * 0.03)); }
     else if (k === 'toy') { if (o.life - o.t > 1.2 || Math.floor(rt * 12) % 2) ds(g, A.soldier[o.face > 0 ? 'R' : 'L'], o.x, o.y - Math.abs(Math.sin(o.t * 6)) * 2); }
     else if (k === 'prop') ds(g, A.prop[o.spr], o.x, o.y);
+    else if (k === 'hunter' || k === 'lost') mapEnt(g, o, rt);
     else if (k === 'lair') ds(g, o.used ? A.prop.used : A.prop.pedestal, o.x, o.y - (o.used ? 0 : Math.abs(Math.sin(rt * 2)) * 3));
   }
+  mapTrain(g, rt);
   // weapons
   for (let i = 0; i < P.charms.length; i += 2) ds(g, A.charm[(i >> 1) % 3], P.charms[i], P.charms[i + 1] - 22 + Math.sin(rt * 6 + i) * 3);
   for (const s of shots) {
@@ -143,7 +150,7 @@ function render(dt) {
   lg.setTransform(1, 0, 0, 1, 0, 0); lg.globalCompositeOperation = 'source-over'; lg.globalAlpha = 1;
   lg.fillStyle = ambient(null, pre); lg.fillRect(0, 0, lw, lh);
   lg.setTransform(ls, 0, 0, ls, -cx * ls, -cy * ls);
-  for (const z of ZONES) if (z.id !== 'main' && z.id !== 'checkout' && z.x < cx + vw && z.x + ZW > cx && z.y < cy + vh && z.y + ZH > cy) { lg.fillStyle = ambient(z, pre); lg.fillRect(z.x, z.y, ZW, ZH); }
+  for (const z of ZONES) if (((z.th !== 'main' && z.th !== 'checkout') || z.out > 0) && z.x < cx + vw && z.x + ZW > cx && z.y < cy + vh && z.y + ZH > cy) { lg.fillStyle = ambient(z, pre); lg.fillRect(z.x, z.y, ZW, ZH); }
   lg.globalCompositeOperation = 'lighter';
   const li = (c, x, y, r, a) => { lg.globalAlpha = a; lg.drawImage(A.light[c], x - r, y - r, r * 2, r * 2); };
   const dim = G.blackout > 0 ? 0.25 : G.flick > 0 ? (Math.sin(rt * 47) > -0.2 ? 0.3 : 0.9) : 1;
@@ -154,10 +161,11 @@ function render(dt) {
       if (cy < 420) { const gr = lg.createLinearGradient(0, 0, 0, 430); gr.addColorStop(0, pre > 0.4 ? 'rgba(255,200,150,.6)' : 'rgba(150,180,255,.5)'); gr.addColorStop(1, 'rgba(150,180,255,0)'); lg.globalAlpha = dim; lg.fillStyle = gr; lg.beginPath(); lg.moveTo(d.x - 104, 0); lg.lineTo(d.x + 104, 0); lg.lineTo(d.x + 210, 430); lg.lineTo(d.x - 150, 430); lg.closePath(); lg.fill(); }
     } else if (d.c) li(d.c === 'butter' ? 'warm' : d.c, d.x, -70, 250, (0.75 + 0.1 * Math.sin(rt * 9 + d.x) + (Math.random() < 0.03 ? -0.4 : 0)) * dim);
   }
-  for (const l of lights) { if (l.x < cx - l.r || l.x > cx + vw + l.r || l.y < cy - l.r || l.y > cy + vh + l.r) continue; let a = l.a; if (l.fl) a *= 1 - l.fl * (0.5 + 0.5 * Math.sin(rt * 13 + l.x)) * (Math.sin(rt * 2.3 + l.y) > 0.2 ? 1 : 0.15) - (Math.random() < l.fl * 0.08 ? 0.5 : 0); if (a > 0.02) li(l.c, l.x, l.y, l.r, a * dim); }
+  const outs = MAP.rule === 'outage';
+  for (const l of lights) { if (outs && zoneAt(l.x, l.y).out > 0) continue; if (l.x < cx - l.r || l.x > cx + vw + l.r || l.y < cy - l.r || l.y > cy + vh + l.r) continue; let a = l.a; if (l.fl) a *= 1 - l.fl * (0.5 + 0.5 * Math.sin(rt * 13 + l.x)) * (Math.sin(rt * 2.3 + l.y) > 0.2 ? 1 : 0.15) - (Math.random() < l.fl * 0.08 ? 0.5 : 0); if (a > 0.02) li(l.c, l.x, l.y, l.r, a * dim); }
   for (const o of dl) {
     const k = o.kind;
-    if (k === 'shelf') { lg.globalAlpha = 0.3 * dim; lg.drawImage(A.light[o.z.lc], o.x - 70, o.y - 150, 560, 270); }
+    if (k === 'shelf') { if (o.z.out > 0) continue; lg.globalAlpha = 0.3 * dim; lg.drawImage(A.light[o.z.lc], o.x - 70, o.y - 150, 560, 270); }
     else if (k === 'box') li(o.gold ? 'warm' : 'pink', o.x, o.y - 20, o.gold ? 260 : 190, 0.9);
     else if (k === 'lair') { if (!o.used) li('red', o.x, o.y - 30, 230, (0.6 + 0.25 * Math.sin(rt * 3)) * dim); }
     else if (k === 'enemy' && o.boss) { li('red', o.x, o.y - o.hgt * 0.45, o.hgt * 1.5, 0.85); li('white', o.x, o.y - o.hgt * 0.68, o.hgt * 0.8, 0.75); }
@@ -165,6 +173,7 @@ function render(dt) {
     else if (k === 'pet') li(o.k === 'kitty' ? 'mint' : 'pink', o.x, o.y - 14, 70, 0.5);
     else if (k === 'toy') li('warm', o.x, o.y - 20, 80, 0.55);
   }
+  mapLights(li, dim, rt);
   const fr = 1 + 0.1 * S.batt;
   li('white', P.x, P.y - 22, 235, 0.95);
   lg.save(); lg.translate(P.x, P.y - 24); lg.rotate(P.aim); lg.globalAlpha = 1; lg.drawImage(A.cone, 0, -270 * fr, 540 * fr, 540 * fr); lg.restore();
@@ -185,7 +194,7 @@ function render(dt) {
   for (const o of dl) {
     const k = o.kind;
     if (k === 'shelf') {
-      g.globalAlpha = (0.6 + 0.25 * Math.sin(rt * 2.4 + o.x)) * dim; ds(g, A.shelfGlow, o.x, o.y);
+      g.globalAlpha = (0.6 + 0.25 * Math.sin(rt * 2.4 + o.x)) * dim * (o.z.out > 0 ? 0.15 : 1); ds(g, A.shelfGlow, o.x, o.y);
       for (const sl of o.slots) {
         let a = 0; if (sl.state === 1) a = 1; else if (sl.state === 0) { if (sl.blink < 0) a = Math.sin(-sl.blink / 0.6 * Math.PI) * 0.9; if (st !== 'title') { const wx = sl.x - P.x, wy = sl.y - P.y, wd = wx * wx + wy * wy; if (wd < 108900 || G.stare > 0) a = Math.max(a, (G.stare > 0 ? 0.95 : 0.75 * (1 - wd / 108900)) * (Math.sin(rt * 31 + sl.x) > -0.93 ? 1 : 0.1)); } }
         if (a > 0.02) { const sc = sl.type === 'mat' ? 0.6 : 0.68; g.globalAlpha = a; ds(g, A.eye[sl.type], sl.x, sl.y - slotEye(sl.type) * sc, sc * 1.15); }
@@ -196,6 +205,7 @@ function render(dt) {
     else if (k === 'lair' && !o.used) { g.globalAlpha = 0.3 + 0.15 * Math.sin(rt * 3); ds(g, A.glow.red, o.x, o.y - 40, 2.6); }
     else if (k === 'prop' && (o.spr === 'case' || o.spr === 'claw')) { g.globalAlpha = 0.22; ds(g, A.glow.mint, o.x + 50, o.y - 40, 2.6); }
   }
+  mapGlow(g, rt); mapGround(g, cx, vw, rt);
   for (const q of gems) { if (q.x < L || q.x > R || q.y < T || q.y > B) continue; g.globalAlpha = 0.4 + 0.25 * Math.sin(q.t * 6); ds(g, A.glow[A.gemGlow[q.k]], q.x, q.y - 12, 0.55); }
   g.globalAlpha = 0.6;
   for (let i = 0; i < P.charms.length; i += 2) ds(g, A.glow.butter, P.charms[i], P.charms[i + 1] - 22, 0.8);
@@ -289,9 +299,9 @@ function hud(g) {
     rr(g, bx, by, bw, 16 * u, 8 * u); fs(g, 'rgba(18,11,36,.9)', 2.5 * u, INK); if (bf > 0) { rr(g, bx + 2.5 * u, by + 2.5 * u, Math.max(11 * u, (bw - 5 * u) * bf), 11 * u, 6 * u); g.fillStyle = m0.final ? '#ff3355' : '#ff8a3d'; g.fill(); }
   }
   // minimap
-  const mw = 108 * u, mh = mw * 0.75, mx0 = w - 12 - mw, my0 = 13 * u + 68, cw2 = mw / 3, ch2 = mh / 3;
+  const cw2 = (MCOLS > 4 ? 30 : 36) * u, ch2 = 27 * u, mw = cw2 * MCOLS, mh = ch2 * MROWS, mx0 = w - 12 - mw, my0 = 13 * u + 68;
   g.globalAlpha = 0.9; rr(g, mx0 - 3 * u, my0 - 3 * u, mw + 6 * u, mh + 6 * u, 7 * u); fs(g, 'rgba(18,11,36,.85)', 2 * u, '#6a58ad');
-  for (const z of ZONES) { const zx = mx0 + (z.i % 3) * cw2, zy = my0 + Math.floor(z.i / 3) * ch2; g.globalAlpha = G.zones[z.id] ? 0.85 : 0.22; g.fillStyle = ZC[z.id]; g.fillRect(zx + 1, zy + 1, cw2 - 2, ch2 - 2); if (z === G.zone) { g.globalAlpha = 1; g.strokeStyle = '#fff6fb'; g.lineWidth = 1.5 * u; g.strokeRect(zx + 1, zy + 1, cw2 - 2, ch2 - 2); } }
+  for (const z of ZONES) { const zx = mx0 + (z.i % MCOLS) * cw2, zy = my0 + Math.floor(z.i / MCOLS) * ch2; g.globalAlpha = G.zones[z.id] ? 0.85 : 0.22; g.fillStyle = z.out > 0 ? '#05020a' : ZC[z.th]; g.fillRect(zx + 1, zy + 1, cw2 - 2, ch2 - 2); if (z === G.zone) { g.globalAlpha = 1; g.strokeStyle = '#fff6fb'; g.lineWidth = 1.5 * u; g.strokeRect(zx + 1, zy + 1, cw2 - 2, ch2 - 2); } }
   g.globalAlpha = 1; const mp = (x, y) => [mx0 + x / W * mw, my0 + y / H * mh];
   for (const l of lairs) if (!l.used) { const [x, y] = mp(l.x, l.y); g.save(); g.translate(x, y); g.rotate(Math.PI / 4); g.fillStyle = '#ff3355'; g.strokeStyle = INK; g.lineWidth = 1.2 * u; g.fillRect(-3 * u, -3 * u, 6 * u, 6 * u); g.strokeRect(-3 * u, -3 * u, 6 * u, 6 * u); g.restore(); }
   for (const b of boxes) { const [x, y] = mp(b.x, b.y); circ(g, x, y, (b.gold ? 3.6 : 2.6) * u); fs(g, b.gold ? '#ffd24a' : C.pink, 1 * u); }
@@ -306,6 +316,7 @@ function hud(g) {
   };
   for (const b of boxes) if (b.gold || Math.hypot(b.x - P.x, b.y - P.y) < 1500) ptr(b.x, b.y - 30, b.gold ? '#ffd24a' : C.pink);
   for (const b of bs) ptr(b.x, b.y - b.hgt * 0.5, '#ff3355');
+  if (G.hunter && G.hunter.fade <= 0 && Math.hypot(G.hunter.x - P.x, G.hunter.y - P.y) < 950) ptr(G.hunter.x, G.hunter.y - 120, '#7a0a22');
   if (joy.on && G.state === 'play') {
     const R = 56 * u; g.globalAlpha = 0.9; circ(g, joy.bx, joy.by, R); g.fillStyle = 'rgba(255,143,208,.1)'; g.fill(); g.lineWidth = 3 * u; g.strokeStyle = 'rgba(255,143,208,.55)'; g.stroke();
     circ(g, joy.bx + joy.dx * R, joy.by + joy.dy * R, 25 * u); g.fillStyle = 'rgba(255,246,251,.8)'; g.fill(); g.lineWidth = 3 * u; g.strokeStyle = 'rgba(255,79,163,.8)'; g.stroke(); g.globalAlpha = 1;
@@ -322,7 +333,7 @@ canvas.addEventListener('pointerdown', e => { e.preventDefault(); if (AU.ctx && 
 canvas.addEventListener('pointermove', e => { if (joy.on && e.pointerId === joy.id) { e.preventDefault(); joyMove(e); } });
 const joyEnd = e => { if (e.pointerId === joy.id) { joy.on = false; joy.dx = joy.dy = 0; } };
 canvas.addEventListener('pointerup', joyEnd); canvas.addEventListener('pointercancel', joyEnd); canvas.addEventListener('lostpointercapture', joyEnd);
-for (const ev of ['touchstart', 'touchmove', 'touchend']) document.addEventListener(ev, e => { if (!(e.target.closest && e.target.closest('button,.scroll,.panel'))) e.preventDefault(); }, { passive: false });
+for (const ev of ['touchstart', 'touchmove', 'touchend']) document.addEventListener(ev, e => { if (!(e.target.closest && e.target.closest('button,.scroll,.panel,.logo'))) e.preventDefault(); }, { passive: false });
 for (const ev of ['gesturestart', 'gesturechange', 'dblclick', 'contextmenu']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
 const keys = {};
 function keySync() { key.x = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0); key.y = (keys.ArrowDown || keys.s ? 1 : 0) - (keys.ArrowUp || keys.w ? 1 : 0); }
@@ -343,9 +354,9 @@ function frame(now) {
   perf.ms = lerp(perf.ms, performance.now() - t0, 0.1);
 }
 function boot() {
-  buildArt(); buildArt2(); buildArt3(); buildIcons(); buildWorld(); reset(SV.mode, heroById(SV.hero)); G.state = 'title'; G.lightT = 2.5; resize(); coinsSync();
+  buildArt(); buildArt2(); buildArt3(); buildArt4(); buildIcons(); setMap(mapOpen(SV.map) ? SV.map : 'store'); reset(SV.mode, heroById(SV.hero)); G.state = 'title'; G.lightT = 2.5; resize(); coinsSync();
   requestAnimationFrame(t => { last = t; frame(t); });
 }
 const fontsReady = document.fonts && document.fonts.load ? Promise.all([document.fonts.load('700 20px Fredoka'), document.fonts.load('30px "Rubik Wet Paint"')]).catch(() => { }) : Promise.resolve();
 Promise.race([fontsReady, new Promise(r => setTimeout(r, 1500))]).then(boot);
-window.__ds = { toys, bolts, STYLES, G, SV, A, AU, S, IT, MB, ET, ZONES, lairs, boxes, sim, perf, UI, VIEW, cam, enemies, gems, save, start: startRun, apply: applyUpgrade, evolve, spawn: spawnEnemy, mini: spawnMini, endRun, showTitle, get P() { return P; } };
+window.__ds = { toys, bolts, STYLES, G, SV, A, AU, S, IT, MB, ET, MAPS, setMap, get ZONES() { return ZONES; }, get MAP() { return MAP; }, lairs, boxes, sim, perf, UI, VIEW, cam, enemies, gems, save, start: startRun, apply: applyUpgrade, evolve, spawn: spawnEnemy, mini: spawnMini, endRun, showTitle, get P() { return P; } };

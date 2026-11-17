@@ -1,18 +1,22 @@
 // ---------- world ----------
-const ZW = 1600, ZH = 1200, W = ZW * 3, H = ZH * 3, WALLH = 170, SH_W = 420, SH_H = 74;
-const ZONES = [
-  { id: 'antique', name: 'The Antique Room', amb: [0.62, 0.42, 0.5], types: { por: 5, hush: 2, mat: 2, rag: 1 }, mb: 'twin', lc: 'red' },
-  { id: 'boutique', name: 'The Boutique', amb: [1.12, 0.95, 1.05], types: { manne: 4, bal: 4, por: 2, rag: 2 }, mb: 'seam', lc: 'pink' },
-  { id: 'nursery', name: 'The Nursery', amb: [0.9, 0.96, 1.12], types: { baby: 6, rag: 3, teddy: 2 }, mb: 'crybaby', lc: 'blue' },
-  { id: 'plush', name: 'Plush Meadow', amb: [1.05, 1.15, 1.0], types: { teddy: 6, rag: 3, baby: 1 }, mb: 'bigted', lc: 'mint' },
-  { id: 'main', name: 'The Shop Floor', amb: [1, 1, 1], types: { rag: 6, bal: 2, por: 2, mat: 1, buddy: 1 }, lc: 'pink' },
-  { id: 'arcade', name: 'The Arcade', amb: [0.55, 0.55, 0.95], types: { robot: 5, jack: 2, nova: 1, bal: 2 }, mb: 'unit9', lc: 'mint' },
-  { id: 'workshop', name: 'The Doll Hospital', amb: [0.58, 0.8, 0.62], types: { patch: 5, rag: 3, buddy: 2 }, mb: 'stitch', lc: 'mint' },
-  { id: 'checkout', name: 'The Checkout', amb: [1, 1, 1], types: { rag: 5, mat: 3, buddy: 2, bal: 2 }, lc: 'pink' },
-  { id: 'stock', name: 'The Stockroom', amb: [0.42, 0.46, 0.7], types: { jack: 5, mat: 3, patch: 2 }, mb: 'jackking', lc: 'blue' },
-];
-ZONES.forEach((z, i) => { z.i = i; z.x = (i % 3) * ZW; z.y = Math.floor(i / 3) * ZH; });
-const zoneAt = (x, y) => ZONES[clamp((y / ZH) | 0, 0, 2) * 3 + clamp((x / ZW) | 0, 0, 2)];
+const ZW = 1600, ZH = 1200, WALLH = 170, SH_W = 420, SH_H = 74;
+let W = ZW * 3, H = ZH * 3, MCOLS = 3, MROWS = 3, MAP = null;
+// room themes: art (tiles, shelves) + default doll mix; maps place them on a grid and may rename them
+const ZTHEME = {
+  antique: { name: 'The Antique Room', amb: [0.62, 0.42, 0.5], types: { por: 5, hush: 2, mat: 2, rag: 1 }, mb: 'twin', lc: 'red' },
+  boutique: { name: 'The Boutique', amb: [1.12, 0.95, 1.05], types: { manne: 4, bal: 4, por: 2, rag: 2 }, mb: 'seam', lc: 'pink' },
+  nursery: { name: 'The Nursery', amb: [0.9, 0.96, 1.12], types: { baby: 6, rag: 3, teddy: 2 }, mb: 'crybaby', lc: 'blue' },
+  plush: { name: 'Plush Meadow', amb: [1.05, 1.15, 1.0], types: { teddy: 6, rag: 3, baby: 1 }, mb: 'bigted', lc: 'mint' },
+  main: { name: 'The Shop Floor', amb: [1, 1, 1], types: { rag: 6, bal: 2, por: 2, mat: 1, buddy: 1 }, lc: 'pink' },
+  arcade: { name: 'The Arcade', amb: [0.55, 0.55, 0.95], types: { robot: 5, jack: 2, nova: 1, bal: 2 }, mb: 'unit9', lc: 'mint' },
+  workshop: { name: 'The Doll Hospital', amb: [0.58, 0.8, 0.62], types: { patch: 5, rag: 3, buddy: 2 }, mb: 'stitch', lc: 'mint' },
+  checkout: { name: 'The Checkout', amb: [1, 1, 1], types: { rag: 5, mat: 3, buddy: 2, bal: 2 }, lc: 'pink' },
+  stock: { name: 'The Stockroom', amb: [0.42, 0.46, 0.7], types: { jack: 5, mat: 3, patch: 2 }, mb: 'jackking', lc: 'blue' },
+  attic: { name: 'The Rafters', amb: [0.62, 0.5, 0.42], types: { por: 3, rag: 3, hush: 1, mat: 2, teddy: 1 }, mb: 'twin', lc: 'warm' },
+  cellar: { name: 'The Cellar', amb: [0.4, 0.5, 0.45], types: { patch: 3, manne: 2, hush: 1, rag: 3, buddy: 1 }, mb: 'stitch', lc: 'red' },
+};
+let ZONES = [];
+const zoneAt = (x, y) => ZONES[clamp((y / ZH) | 0, 0, MROWS - 1) * MCOLS + clamp((x / ZW) | 0, 0, MCOLS - 1)];
 const shelves = [], solids = [], slots = [], decor = [], wallDecor = [], lairs = [], lights = [];
 const G = { state: 'boot', t: 0, rt: 0, ts: 1, bot: false, mode: null, hero: null };
 let P = null;
@@ -126,24 +130,30 @@ function addShelf(z, lx, ly, v) {
 }
 function addProp(z, spr, lx, ly, w, h, light) { const x = z.x + lx, y = z.y + ly; solids.push({ kind: 'prop', spr, x, y, w, h, sy: y + h }); if (light) lights.push({ x: x + w / 2, y: y - 20, r: light[1], c: light[0], a: light[2] || 0.8, fl: light[3] || 0 }); }
 function buildWorld() {
+  for (const a of [shelves, solids, slots, decor, wallDecor, lairs, lights]) a.length = 0;
   for (const z of ZONES) {
-    const rows = z.id === 'main' ? [200, 920] : z.id === 'checkout' ? [230, 890] : [230, 560, 890];
+    const th = z.th, rows = th === 'main' ? [200, 920] : th === 'checkout' ? [230, 890] : [230, 560, 890];
     rows.forEach((ly, ri) => [170, 1010].forEach((lx, si) => addShelf(z, lx, ly, (ri + si) % 2)));
     const P4 = [[640, 240], [860, 240], [640, 960], [860, 960]];
-    if (z.id === 'main') { addProp(z, 'case', 400, 560, 100, 72, ['mint', 200]); addProp(z, 'case', 1100, 560, 100, 72, ['mint', 200]); decor.push({ s: 'rug', x: z.x + 800, y: z.y + 610 }); }
-    if (z.id === 'checkout') { addProp(z, 'counter', 170, 560, 420, 74, ['mint', 150, 0.6]); addProp(z, 'counter', 1010, 560, 420, 74, ['mint', 150, 0.6]); decor.push({ s: 'rug', x: z.x + 800, y: z.y + 600 }); }
-    if (z.id === 'plush') for (const [x, y] of [[660, 300], [880, 330], [640, 1000], [900, 960], [760, 880]]) addProp(z, 'beanbag', x, y, 90, 40);
-    if (z.id === 'arcade') P4.forEach(([x, y], i) => addProp(z, 'claw', x, y, 100, 56, [i % 2 ? 'pink' : 'mint', 260, 0.95, 0.15]));
-    if (z.id === 'antique') P4.forEach(([x, y]) => addProp(z, 'cabinet', x, y, 100, 72, ['red', 220, 0.8, 0.1]));
-    if (z.id === 'boutique') { addProp(z, 'rack', 690, 300, 220, 30, ['pink', 240, 0.6]); addProp(z, 'rack', 690, 1010, 220, 30, ['pink', 240, 0.6]); }
-    if (z.id === 'nursery') { for (const [x, y] of [[610, 290], [860, 290], [735, 1010]]) addProp(z, 'crib', x, y, 134, 56, ['blue', 200, 0.6]); }
-    if (z.id === 'workshop') { addProp(z, 'bench', 680, 300, 240, 60, ['warm', 280, 1, 0.5]); addProp(z, 'bench', 680, 1010, 240, 60, ['warm', 280, 1, 0.5]); }
-    if (z.id === 'stock') { for (const [x, y] of [[620, 270], [860, 300], [640, 990], [880, 960], [1300, 400], [200, 760]]) addProp(z, 'crates', x, y, 120, 58); lights.push({ x: z.x + 800, y: z.y + 600, r: 420, c: 'white', a: 0.7, fl: 0.9 }); }
+    if (th === 'main') { addProp(z, 'case', 400, 560, 100, 72, ['mint', 200]); addProp(z, 'case', 1100, 560, 100, 72, ['mint', 200]); decor.push({ s: 'rug', x: z.x + 800, y: z.y + 610 }); }
+    if (th === 'checkout') { addProp(z, 'counter', 170, 560, 420, 74, ['mint', 150, 0.6]); addProp(z, 'counter', 1010, 560, 420, 74, ['mint', 150, 0.6]); decor.push({ s: 'rug', x: z.x + 800, y: z.y + 600 }); }
+    if (th === 'plush') for (const [x, y] of [[660, 300], [880, 330], [640, 1000], [900, 960], [760, 880]]) addProp(z, 'beanbag', x, y, 90, 40);
+    if (th === 'arcade') P4.forEach(([x, y], i) => addProp(z, 'claw', x, y, 100, 56, [i % 2 ? 'pink' : 'mint', 260, 0.95, 0.15]));
+    if (th === 'antique') P4.forEach(([x, y]) => addProp(z, 'cabinet', x, y, 100, 72, ['red', 220, 0.8, 0.1]));
+    if (th === 'boutique') { addProp(z, 'rack', 690, 300, 220, 30, ['pink', 240, 0.6]); addProp(z, 'rack', 690, 1010, 220, 30, ['pink', 240, 0.6]); }
+    if (th === 'nursery') { for (const [x, y] of [[610, 290], [860, 290], [735, 1010]]) addProp(z, 'crib', x, y, 134, 56, ['blue', 200, 0.6]); }
+    if (th === 'workshop') { addProp(z, 'bench', 680, 300, 240, 60, ['warm', 280, 1, 0.5]); addProp(z, 'bench', 680, 1010, 240, 60, ['warm', 280, 1, 0.5]); }
+    if (th === 'stock') { for (const [x, y] of [[620, 270], [860, 300], [640, 990], [880, 960], [1300, 400], [200, 760]]) addProp(z, 'crates', x, y, 120, 58); lights.push({ x: z.x + 800, y: z.y + 600, r: 420, c: 'white', a: 0.7, fl: 0.9 }); }
+    if (th === 'attic') { for (const [x, y] of [[650, 280], [900, 980]]) addProp(z, 'cabinet', x, y, 100, 72, ['warm', 200, 0.7, 0.35]); addProp(z, 'crates', 860, 260, 120, 58); addProp(z, 'crates', 620, 980, 120, 58); }
+    if (th === 'cellar') { addProp(z, 'bench', 680, 300, 240, 60, ['red', 260, 0.9, 0.6]); for (const [x, y] of [[640, 990], [880, 960]]) addProp(z, 'crates', x, y, 120, 58); lights.push({ x: z.x + 800, y: z.y + 640, r: 380, c: 'red', a: 0.55, fl: 0.7 }); }
     if (z.mb) lairs.push({ kind: 'lair', x: z.x + 800, y: z.y + 600, sy: z.y + 600, z, used: false });
     for (let i = 0; i < 5; i++) { const x = z.x + rand(100, ZW - 100), y = z.y + rand(120, ZH - 80); if (!shelfAt(x, y)) decor.push({ s: 'decal', x, y, i: randi(0, 7) }); }
     if (z.y === 0) {
-      wallDecor.push({ s: 'win', x: z.x + 400 }, { s: z.id === 'boutique' ? 'winMoon' : 'win', x: z.x + 1200 }, { s: 'poster', x: z.x + 150 }, { s: 'poster', x: z.x + 1450 });
-      wallDecor.push(z.id === 'antique' ? { s: 'poster', x: z.x + 800 } : z.id === 'boutique' ? { s: 'neonHeart', x: z.x + 800, c: 'pink' } : { s: 'neonMoon', x: z.x + 800, c: 'mint' });
+      if (MAP.under) wallDecor.push({ s: 'poster', x: z.x + 400 }, { s: 'poster', x: z.x + 1200 }, { s: 'neonMoon', x: z.x + 800, c: 'red' });
+      else {
+        wallDecor.push({ s: 'win', x: z.x + 400 }, { s: th === 'boutique' ? 'winMoon' : 'win', x: z.x + 1200 }, { s: 'poster', x: z.x + 150 }, { s: 'poster', x: z.x + 1450 });
+        wallDecor.push(th === 'antique' || th === 'attic' ? { s: 'poster', x: z.x + 800 } : th === 'boutique' ? { s: 'neonHeart', x: z.x + 800, c: 'pink' } : { s: 'neonMoon', x: z.x + 800, c: 'mint' });
+      }
     }
   }
 }
@@ -156,7 +166,7 @@ function reset(mode, hero) {
   G.mode = MODES[mode] || MODES.short; G.hero = hero || HEROES[0];
   const M = G.mode;
   Object.assign(G, { t: 0, kills: 0, coins: 0, shake: 0, flash: 0, flash2: 0, blackout: 0, hurt: 0, dawn: 0, spawnAcc: 0, boxT: 22, comboT: 0, pending: 0, bosses: [], bossDead: false, dmgDone: 0, dps: 0, dpsT: 0, dpsLast: 0, stateT: 0, cap: 24, lightT: rand(14, 22), scareT: rand(22, 32), peek: 0, peekD: 1, peekS: 1, flick: 0, stare: 0, msgT: 0, msg: '', msgX: .5, msgY: .5, heartT: 0, nextWave: 60, wi: 0, minis: M.minis.slice(), nextMini: M.every || 0, bossAt: M.boss, bossWarn: false, eliteT: 50, hm: 1, kbR: 1, spdMul: 1, dmgMul: 1, minisKilled: 0, bossKills: 0, evos: 0, seen: {}, by: {}, styleMax: 0, dare: Object.assign({}, SV.dares), zone: null, zones: {}, mbOrder: Object.keys(MB).filter(k => !MB[k].final).sort(() => Math.random() - 0.5), mbi: 0, earned: 0 });
-  P = { kind: 'player', x: 2400, y: 1810, sy: 1810, r: 13, hp: 100, maxhp: 100, vx: 0, vy: 0, face: 1, back: false, aim: -Math.PI / 2, inv: 0, lvl: 1, xp: 0, need: need(1), up: {}, walk: 0, moving: false, tm: { gloss: 0.5, bomb: 1, ball: 0.6, storm: 1.4, aura: 0, spray: 0, scissors: 0.8, mirror: 1, musicbox: 1.5, whip: 0.6, bubble: 0.8, zap: 1, trail: 0, turret: 0.5, alarm: 12 }, whipB: 0, whipF: 1, mend: 0, charms: [], auraR: 0, sprayR: 0, sprayA: 0, shieldUp: false, shieldT: 3, revives: 0, rerolls: 0, blinkT: 3 };
+  P = { kind: 'player', x: W / 2, y: H / 2 + 10, sy: H / 2 + 10, r: 13, hp: 100, maxhp: 100, vx: 0, vy: 0, face: 1, back: false, aim: -Math.PI / 2, inv: 0, lvl: 1, xp: 0, need: need(1), up: {}, walk: 0, moving: false, tm: { gloss: 0.5, bomb: 1, ball: 0.6, storm: 1.4, aura: 0, spray: 0, scissors: 0.8, mirror: 1, musicbox: 1.5, whip: 0.6, bubble: 0.8, zap: 1, trail: 0, turret: 0.5, alarm: 12 }, whipB: 0, whipF: 1, mend: 0, charms: [], auraR: 0, sprayR: 0, sprayA: 0, shieldUp: false, shieldT: 3, revives: 0, rerolls: 0, blinkT: 3 };
   P.up[G.hero.start] = 1;
   const sh = SV.shop, hm = G.hero.mod;
   if (sh.start) { const c = Object.values(IT).filter(u => u.k !== 'W' && u.id !== 'coupon' && itemOk(u.id)); P.up[pick(c).id] = 1; }
@@ -165,6 +175,7 @@ function reset(mode, hero) {
   for (let i = 0; i < (sh.head || 0); i++) { P.lvl++; P.need = need(P.lvl); G.pending++; }
   for (const s of slots) { s.state = 0; s.type = wpick(s.sh.z.types); s.vr = randi(0, 2); s.blink = rand(1, 12); }
   for (const l of lairs) l.used = false;
+  mapReset();
   joy.on = false; joy.dx = joy.dy = 0;
 }
 function recalc() {
@@ -176,12 +187,12 @@ function recalc() {
   S.crit = 0.05 + 0.08 * lv('ears') + 0.02 * lv('clip') + (hm.crit || 0);
   S.pick = 70 * (1 + 0.35 * lv('bow') + 0.1 * n('mag') + (hm.pick || 0));
   S.regen = 0.4 * lv('locket') + (hm.regen || 0);
-  S.xp = [1, 1, 1, 1, 1.15, 1.3, 1.5][lv('bunny')] * (1 + 0.08 * lv('notes') + 0.04 * n('grow') + (hm.xp || 0));
+  S.xp = [1, 1, 1, 1, 1.15, 1.3, 1.5][lv('bunny')] * (1 + 0.08 * lv('notes') + 0.04 * n('grow') + (hm.xp || 0)) * (MAP.xp || 1);
   S.spd = 1 + 0.09 * lv('boots') + 0.03 * n('spd') + (hm.spd || 0);
   S.armor = (1 - 0.07 * lv('hoodie')) * (1 - 0.03 * n('armor'));
   S.dodge = 0.06 * lv('foot') + (hm.dodge || 0);
   S.coin = 1 + 0.2 * lv('piggy') + 0.1 * n('greed');
-  S.echo = 0.1 * lv('scrunchie'); S.venom = 0.2 * lv('lipstick'); S.batt = lv('battery'); S.thorns = [0, 20, 35, 50, 65, 80][lv('backpack')];
+  S.echo = 0.1 * lv('scrunchie'); S.venom = 0.2 * lv('lipstick'); S.batt = lv('battery') + (hm.batt || 0); S.thorns = [0, 20, 35, 50, 65, 80][lv('backpack')];
   S.shieldCd = [0, 18, 16, 14, 12, 10][lv('shield')];
   P.maxhp = 100 + 20 * lv('locket') + 10 * n('vit') + (hm.hp || 0);
   const st = c => styleTier(c)[1], mk = st('MAKEUP'), of = st('OUTFIT'), cm = st('CHARM'), ty = st('TOY'), pt = st('PET');
@@ -211,7 +222,7 @@ function evoReady() { return Object.keys(P.up).filter(id => IT[id] && IT[id].evo
 function heal(n) { P.hp = Math.min(P.maxhp, P.hp + n); addNum(P.x, P.y - 78, '+' + n, 3); sfx('heal'); for (let i = 0; i < 8; i++) part(P.x + rand(-14, 14), P.y - rand(10, 50), rand(-20, 20), rand(-90, -40), rand(0.4, 0.8), rand(10, 16), A.spark.red, true); }
 
 // ---------- spatial grid ----------
-const GC = 100, GW = Math.ceil(W / GC), GH = Math.ceil(H / GC), grid = Array.from({ length: GW * GH }, () => []);
+const GC = 100, GW = Math.ceil(ZW * 5 / GC), GH = Math.ceil(ZH * 4 / GC), grid = Array.from({ length: GW * GH }, () => []);
 const gridUsed = [];
 function gridBuild() { for (const c of gridUsed) c.length = 0; gridUsed.length = 0; for (const e of enemies) { if (e.dead || e.st === 'jump') continue; const c = grid[clamp((e.y / GC) | 0, 0, GH - 1) * GW + clamp((e.x / GC) | 0, 0, GW - 1)]; if (!c.length) gridUsed.push(c); c.push(e); } }
 function forNear(x, y, r, fn) {
@@ -319,7 +330,7 @@ function bossDeath(e) {
   else { G.minisKilled++; banner(M.name + ' DEFEATED', 'Grab the golden gift'); }
 }
 function eb(x, y, a, sp, dmg, r = 9) { if (eshots.length < 220) eshots.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r, dmg, life: 4.5, dead: false }); }
-function ezone(x, y, r, d, dmg) { ezones.push({ x, y, r, t: 0, d, dmg, dead: false }); }
+function ezone(x, y, r, d, dmg, drop) { const z = { x, y, r, t: 0, d, dmg, drop, dead: false }; ezones.push(z); return z; }
 function mbAI(e, dt, d, mx, my) {
   const M = e.mb, rage = e.hp < e.maxhp * 0.5, pa = Math.atan2(my, mx);
   if (!e.act) {
@@ -371,6 +382,7 @@ function updEnemies(dt) {
     if (S.night && d < 185 && e.slow <= 0.06 && !e.boss) { e.slow = 0.1; e.slowF = 1 - S.night; }
     if (e.slow > 0) { e.slow -= dt; sp *= e.slowF; }
     if (e.lit && S.batt) sp *= litSlow;
+    if (MAP.rule === 'outage' && zoneAt(e.x, e.y).out > 0) sp *= 1.25;
     e.over = e.boss ? null : shelfAt(e.x, e.y); if (e.over) sp *= 0.55;
     e.x += (mx * sp + e.kx) * dt; e.y += (my * sp + e.ky) * dt;
     const kd = Math.exp(-7 * dt); e.kx *= kd; e.ky *= kd;
@@ -385,7 +397,7 @@ function updEnemies(dt) {
     for (let i = 0; i < n; i++) { const a = c[i]; if (a.dead || a.boss) continue; for (let j = i + 1; j < n; j++) { const b = c[j]; if (b.dead || b.boss) continue; const dx = b.x - a.x, dy = b.y - a.y, q = (a.r + b.r) * 0.9, d2 = dx * dx + dy * dy; if (d2 < q * q && d2 > 0.01) { const d = Math.sqrt(d2), p = (q - d) / d * 0.5 * Math.min(1, dt * 14), wa = b.mass / (a.mass + b.mass); a.x -= dx * p * wa * 2; a.y -= dy * p * wa * 2; b.x += dx * p * (1 - wa) * 2; b.y += dy * p * (1 - wa) * 2; } } }
   }
   for (const z of ezones) {
-    z.t += dt; if (z.t < z.d) continue; z.dead = true; if (!z.dmg) continue;
+    z.t += dt; if (z.t < z.d) continue; z.dead = true; if (z.drop) rafterDrop(z); if (!z.dmg) continue;
     ring(z.x, z.y, z.r * 0.3, z.r, 0.3, 'red', 6); flashAt(z.x, z.y, z.r * 2, 0.25, 'red'); for (let i = 0; i < 5; i++) part(z.x + rand(-z.r, z.r) * 0.6, z.y + rand(-z.r, z.r) * 0.4, 0, -40, 0.4, rand(20, 34), A.puff, false, 0, 1, 30);
     if (Math.hypot(P.x - z.x, P.y - z.y) < z.r + P.r) damagePlayer(z.dmg);
   }
@@ -428,7 +440,7 @@ function spawnNear() {
   const unl = unlocked(), cand = [];
   for (const s of slots) { if (s.state !== 0) continue; const dx = s.x - P.x; if (dx > 700 || dx < -700) continue; const dy = s.y - P.y, q = dx * dx + dy * dy; if (q > 230 * 230 && q < 700 * 700 && unl[s.type]) cand.push(s); }
   if (cand.length > 4 && Math.random() < 0.7) { wake(pick(cand)); return; }
-  const a = rand(TAU), d = rand(600, 690), x = clamp(P.x + Math.cos(a) * d, 20, W - 20), y = clamp(P.y + Math.sin(a) * d * 0.75, 20, H - 20);
+  let x = 0, y = 0; for (let k = 0; k < 8; k++) { const a = rand(TAU), d = rand(600, 690); x = clamp(P.x + Math.cos(a) * d, 20, W - 20); y = clamp(P.y + Math.sin(a) * d * 0.75, 20, H - 20); if (Math.hypot(x - P.x, y - P.y) > 430) break; }
   const ty = Math.random() < 0.5 ? wpick(zoneAt(x, y).types, unl) : wpick(SPAWNW, unl), n = ET[ty].pack || 1;
   for (let i = 0; i < n; i++) spawnEnemy(ty, clamp(x + rand(-30, 30) * i, 20, W - 20), clamp(y + rand(-30, 30) * i, 20, H - 20), { pop: true });
 }
@@ -438,11 +450,11 @@ function doWave() {
   banner(w[2], w[3]); if (w[4]) { G.blackout = 1.8; sfx('dark'); } else lightning();
   ringSpawn(w[0], n, 540); if (G.t > 200) ringSpawn('rag', Math.round(10 + G.t / 60), 620);
 }
-function nearSpot(dist) { let dx = 2400 - P.x, dy = 1800 - P.y, d = Math.hypot(dx, dy); if (d < 60) { dx = 0; dy = -1; d = 1; } return [clamp(P.x + dx / d * dist, 140, W - 140), clamp(P.y + dy / d * dist * 0.85, 180, H - 100)]; }
+function nearSpot(dist) { let dx = W / 2 - P.x, dy = H / 2 - P.y, d = Math.hypot(dx, dy); if (d < 60) { dx = 0; dy = -1; d = 1; } return [clamp(P.x + dx / d * dist, 140, W - 140), clamp(P.y + dy / d * dist * 0.85, 180, H - 100)]; }
 function director(dt) {
   const t = G.t, m = t / 60, M = G.mode;
   const lm = Math.max(0, m - 5); G.hm = 1 + m * 0.38 + m * m * 0.045 + lm * lm * lm * 0.05; G.spdMul = (1 + Math.min(0.3, t / 900 * 0.3) + Math.max(0, t - 600) / 600 * 0.5) * (G.dare.rush ? 1.2 : 1); G.dmgMul = 1 + Math.min(3, t / 600 * 0.7);
-  G.cap = Math.min(250, 24 + t * 0.62) * (G.dare.swarm ? 1.3 : 1); G.kbR = Math.sqrt(G.hm);
+  G.cap = Math.min(250, 24 + t * 0.62) * (G.dare.swarm ? 1.3 : 1) * (MAP.dens || 1); G.kbR = Math.sqrt(G.hm);
   if (!G.bosses.some(b => b.mb.final)) AU.layer = t < 50 ? 0 : t < 125 ? 1 : 2;
   G.dpsT += dt; if (G.dpsT >= 10) { G.dps = lerp((G.dmgDone - G.dpsLast) / G.dpsT, G.dps, 0.4); G.dpsLast = G.dmgDone; G.dpsT = 0; }
   G.lightT -= dt; if (G.lightT <= 0) { G.lightT = rand(24, 40); lightning(); }
@@ -455,7 +467,7 @@ function director(dt) {
   if (G.bossAt && t >= G.bossAt) { G.bossAt = 0; const p = nearSpot(430); spawnMini('madame', p[0], p[1]); }
   if (M.len < 1e9 && t > M.len - 24 && !G.almost) { G.almost = true; banner('ALMOST DAWN', 'Hold on'); }
   if (G.blackout > 0) return;
-  G.spawnAcc += (Math.min(9, 1.5 + t * 0.026) + Math.max(0, t - 300) * 0.013) * dt * (G.bosses.length ? 0.6 : 1) * (G.dare.swarm ? 1.4 : 1);
+  G.spawnAcc += (Math.min(9, 1.5 + t * 0.026) + Math.max(0, t - 300) * 0.013) * dt * (G.bosses.length ? 0.6 : 1) * (G.dare.swarm ? 1.4 : 1) * (MAP.dens || 1);
   while (G.spawnAcc >= 1) { G.spawnAcc -= 1; if (enemies.length < G.cap) spawnNear(); }
   G.eliteT -= dt; if (G.eliteT <= 0) { G.eliteT = Math.max(18, 45 - t / 40); const unl = unlocked(), a = rand(TAU); spawnEnemy(wpick(SPAWNW, unl), clamp(P.x + Math.cos(a) * 620, 30, W - 30), clamp(P.y + Math.sin(a) * 480, 30, H - 30), { pop: true, elite: true }); }
   G.boxT -= dt;
@@ -734,7 +746,7 @@ function botInput() {
   let best = null, bd = 1e12; for (const g of gems) { const d = (g.x - P.x) * (g.x - P.x) + (g.y - P.y) * (g.y - P.y); if (d < bd) { bd = d; best = g; } }
   if (best && bd < 500 * 500) { const d = Math.sqrt(bd) || 1; ax += (best.x - P.x) / d * 0.9; ay += (best.y - P.y) / d * 0.9; }
   for (const b of boxes) { const dx = b.x - P.x, dy = b.y - P.y, d = Math.hypot(dx, dy) || 1; if (b.gold || d < 700) { ax += dx / d * (b.gold ? 1.6 : 0.8); ay += dy / d * (b.gold ? 1.6 : 0.8); } }
-  ax += (2400 - P.x) / 1400; ay += (1810 - P.y) / 1100;
+  ax += (W / 2 - P.x) / 1400; ay += (H / 2 + 10 - P.y) / 1100; [ax, ay] = mapBot(ax, ay);
   ax += Math.cos(G.t * 0.7) * 0.5; ay += Math.sin(G.t * 0.9) * 0.5;
   const m = Math.hypot(ax, ay) || 1; return [ax / m, ay / m];
 }
@@ -797,7 +809,7 @@ function update(dt) {
   if (st === 'play') {
     G.t += dt;
     if (G.t >= G.mode.len) { G.state = 'dawn'; G.stateT = 0; AU.mode = 'off'; sfx('win'); hideHud(); return; }
-    updPlayer(dt); director(dt); updSlots(dt, true); gridBuild(); updEnemies(dt); updWeapons(dt); updShots(dt); updPets(dt); updGems(dt);
+    updPlayer(dt); director(dt); updSlots(dt, true); gridBuild(); updEnemies(dt); mapUpdate(dt); updWeapons(dt); updShots(dt); updPets(dt); updGems(dt);
     for (const b of boxes) { b.t += dt; if (Math.hypot(b.x - P.x, b.y - P.y) < 36) openBox(b); }
     compact(enemies); compact(gems); compact(shots); compact(eshots); compact(boxes);
     G.comboT -= dt; if (G.comboT <= 0) AU.combo = 0;
@@ -810,15 +822,17 @@ function update(dt) {
   if (st === 'dawn') {
     G.stateT += dt; G.dawn = Math.min(1, G.stateT / 2.6); updFx(dt);
     for (const e of enemies) { e.t += dt * 0.3; if (!e.dead && Math.random() < dt * (0.8 + G.stateT * 2)) { e.dead = true; burst(e.x, e.y - e.hgt * 0.4, 'butter', e.boss ? 30 : 5); } }
-    compact(enemies); eshots.length = 0; ezones.length = 0;
+    compact(enemies); eshots.length = 0; ezones.length = 0; G.train = null;
+    if (G.hunter) { burst(G.hunter.x, G.hunter.y - 120, 'red', 30); G.hunter = null; }
     if (G.stateT > 3.6) { G.state = 'won'; endRun(true); }
     return;
   }
 }
-function sim(mode = 'short', heroId = 'luna', maxT = 1000) {
+function sim(mode = 'short', heroId = 'luna', maxT = 1000, map) {
+  if (map) setMap(map);
   G.bot = true; reset(mode, HEROES.find(h => h.id === heroId)); G.state = 'play';
   const log = []; let lastLog = 0, n = 0;
   while (G.state === 'play' && n++ < maxT * 60) { update(1 / 60); if (G.t - lastLog >= 60) { lastLog = G.t; log.push(`${Math.round(G.t)}s L${P.lvl} hp${Math.round(P.hp)} en${enemies.length} k${G.kills} dps${Math.round(G.dps)} hm${G.hm.toFixed(1)} mb${G.minisKilled} c${G.coins}`); } }
-  const r = { state: G.state, t: Math.round(G.t), lvl: P.lvl, kills: G.kills, hp: Math.round(P.hp), bossDead: G.bossDead, minis: G.minisKilled, coins: G.coins, evos: G.evos, up: Object.assign({}, P.up), by: Object.assign({}, G.by), log };
+  const r = { map: MAP.id, state: G.state, t: Math.round(G.t), trainK: G.trainKills, found: G.found, lvl: P.lvl, kills: G.kills, hp: Math.round(P.hp), bossDead: G.bossDead, minis: G.minisKilled, coins: G.coins, evos: G.evos, up: Object.assign({}, P.up), by: Object.assign({}, G.by), log };
   G.bot = false; G.state = 'title'; return r;
 }
