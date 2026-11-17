@@ -2,7 +2,7 @@
 """Inline src/ into a single self-contained index.html."""
 from pathlib import Path
 s = Path(__file__).parent / "src"
-js = "\n".join((s / f).read_text() for f in ["art.js", "art2.js", "art3.js", "audio.js", "game.js", "meta.js", "render.js"])
+js = "\n".join((s / f).read_text() for f in ["art.js", "art2.js", "art3.js", "audio.js", "game.js", "maps.js", "meta.js", "render.js"])
 html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>

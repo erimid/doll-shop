@@ -152,3 +152,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .dmgbox b{font-size:11px;color:#ffe58a;width:38px;text-align:right}
 @media (orientation:portrait){.cards{flex-direction:column;align-items:center}.card{width:min(88vw,430px);flex-direction:row;flex-wrap:wrap;text-align:left;padding:10px 14px;gap:4px 12px}.card img{width:60px;height:60px}.card h3{flex:1}.card p{flex-basis:100%}.logo{font-size:23vw}.setrow{flex-direction:column}.modes{flex-direction:column}.dares{flex-wrap:wrap}.dl{width:100%}.dare{flex-basis:45%}.cards.c4 .card{width:min(88vw,430px)}.hero img{height:6.5vh;flex:none}.hbig{height:13vh}.setrow{flex:none}#setup{overflow-y:auto;touch-action:pan-y;justify-content:flex-start}.earnbox{flex-direction:column}.earnbox ul{columns:1}.panel{overflow-y:auto;touch-action:pan-y}}
 @media (max-height:520px){.card img{width:44px;height:44px}.hero img{height:19vh}.tag1,.hint{display:none}.lvh span{font-size:8vh}}
+.map b{display:flex;align-items:baseline;justify-content:center;gap:0 6px;flex-wrap:wrap}.map b i{font-style:normal;font-size:clamp(8px,1.4vh,11px);letter-spacing:.1em;color:#ffe58a;font-weight:700}
+.map.on{border-color:#ff8fd0;background:#3a1640;box-shadow:0 0 20px rgba(255,90,170,.45)}
+.map.sec{border-color:#7a0a22;background:#1a0710}.map.sec.on{border-color:#ff3355;background:#3a0614;box-shadow:0 0 24px rgba(255,30,70,.6)}.map.sec span{color:#ff8fa8}
+.tile.sec.done h3{color:#ffb0c0}.tile.lost.unk img{filter:brightness(0) drop-shadow(0 0 6px rgba(255,60,90,.6))}
+.tag1.knock{color:#ff2a55!important;text-shadow:0 0 12px #ff0033;font-style:italic}
+.logo{cursor:pointer}

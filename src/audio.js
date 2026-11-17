@@ -34,7 +34,7 @@ function noiz(d, o = {}) {
   gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(o.g || 0.2, t0 + (o.a || 0.004)); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
   s.connect(f); f.connect(gn); gn.connect(o.bus || aSfx); s.start(t0, Math.random() * 0.5); s.stop(t0 + d + 0.04);
 }
-const SFX_GAP = { coin: 0.05, chime: 0.3, ui: 0.05, shoot: 0.09, hit: 0.05, pop: 0.045, gem: 0.035, wake: 0.3, zap: 0.1, squish: 0.07, meow: 0.2, boom: 0.08, giggle: 2, whisper: 2, heart: 0.5 };
+const SFX_GAP = { coin: 0.05, chime: 0.3, ui: 0.05, shoot: 0.09, hit: 0.05, pop: 0.045, gem: 0.035, wake: 0.3, zap: 0.1, squish: 0.07, meow: 0.2, boom: 0.08, giggle: 2, whisper: 2, heart: 0.5, creak: 0.6, horn: 1 };
 const sfxLast = {};
 const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
 function sfx(n) {
@@ -69,6 +69,9 @@ function sfx(n) {
     case 'whisper': for (let i = 0; i < 4; i++) noiz(0.22, { type: 'bandpass', fc: rand(1800, 3400), f2: rand(900, 1500), q: 3, g: 0.09, a: 0.08, t: i * 0.24 }); tone(58, 1.3, { f2: 44, g: 0.2, a: 0.3 }); break;
     case 'heart': tone(62, 0.16, { f2: 38, g: 0.5 }); tone(56, 0.2, { f2: 34, g: 0.4, t: 0.2 }); break;
     case 'nope': tone(180, 0.14, { type: 'square', f2: 120, g: 0.07 }); break;
+    case 'horn': for (const [f, t] of [[196, 0], [233, 0], [196, 0.62], [233, 0.62]]) tone(f, 0.5, { type: 'sawtooth', f2: f * 0.94, g: 0.09, a: 0.05, t, send: true }); noiz(1.4, { fc: 300, f2: 120, g: 0.12, t: 0.1 }); break;
+    case 'train': noiz(1.2, { fc: 900, f2: 160, g: 0.3 }); for (let i = 0; i < 8; i++) tone(70, 0.08, { type: 'square', g: 0.12, t: i * 0.12 }); break;
+    case 'creak': tone(rand(150, 210), 0.7, { type: 'sawtooth', f2: rand(90, 120), g: 0.06, a: 0.1 }); noiz(0.5, { type: 'bandpass', fc: 600, q: 6, g: 0.05 }); break;
     case 'bossdie': noiz(0.9, { fc: 5000, f2: 300, g: 0.35 }); tone(300, 0.9, { type: 'square', f2: 30, g: 0.2 }); for (let i = 0; i < 8; i++) tone(rand(1500, 4000), 0.12, { g: 0.04, t: i * 0.06 }); break;
   }
 }

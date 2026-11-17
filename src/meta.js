@@ -1,9 +1,9 @@
 // ---------- save / meta progression ----------
 const SAVE_KEY = 'dss_save_v2';
 function loadSave() {
-  const d = { coins: 0, shop: {}, items: {}, heroes: { luna: 1 }, ach: {}, seen: {}, stats: { runs: 0, kills: 0, minis: 0, bosses: 0, evos: 0, earned: 0, best: {}, wins: {}, heroWins: {} }, hero: 'luna', mode: 'short', muted: false, dares: {} };
+  const d = { coins: 0, shop: {}, items: {}, heroes: { luna: 1 }, ach: {}, seen: {}, stats: { runs: 0, kills: 0, minis: 0, bosses: 0, evos: 0, earned: 0, best: {}, wins: {}, heroWins: {}, mbest: {}, mapWins: {} }, hero: 'luna', mode: 'short', map: 'store', lost: {}, muted: false, dares: {} };
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) for (const k in d) if (s[k] !== undefined && typeof s[k] === typeof d[k]) d[k] = typeof d[k] === 'object' ? Object.assign(d[k], s[k]) : s[k]; } catch (e) { }
-  for (const k of ['best', 'wins', 'heroWins']) if (!d.stats[k] || typeof d.stats[k] !== 'object') d.stats[k] = {};
+  for (const k of ['best', 'wins', 'heroWins', 'mbest', 'mapWins']) if (!d.stats[k] || typeof d.stats[k] !== 'object') d.stats[k] = {};
   d.heroes.luna = 1; return d;
 }
 const SV = loadSave();
@@ -48,6 +48,17 @@ const ACH = [
   { id: 'kills_10k', name: 'Clearance Sale', desc: 'Stop 10,000 dolls in total', rw: 400, ok: () => SV.stats.kills >= 10000 },
   { id: 'squad', name: 'Squad Goals', desc: 'Win a night with 3 different girls', rw: 300, ok: () => Object.keys(SV.stats.heroWins).length >= 3 },
   { id: 'dex', name: 'Shelf Complete', desc: 'Stop every kind of doll and boss', rw: 500, ok: () => Object.keys(ET).concat(Object.keys(MB)).every(k => SV.seen[k]) },
+  { id: 'win_attic', name: 'Up in the Rafters', desc: 'Survive a night in the Attic', rw: 150, ok: r => r.win && r.map === 'attic' },
+  { id: 'win_express', name: 'Last Stop', desc: 'Survive a night on the Midnight Express', rw: 200, ok: r => r.win && r.map === 'express' },
+  { id: 'win_mall', name: 'Closing Down Sale', desc: 'Survive a night in the Department Store', rw: 250, ok: r => r.win && r.map === 'mall' },
+  { id: 'atlas', name: 'Store Map', desc: 'Survive a night on all four upstairs maps', rw: 400, ok: () => LOST_UP.every(m => SV.stats.mapWins[m]) },
+  { id: 'knock', secret: true, name: 'Knock Knock', desc: 'Knock on the title seven times', rw: 50, ok: () => false },
+  { id: 'lost_1', secret: true, name: 'Finders Keepers', desc: 'Find a lost doll', rw: 100, ok: r => r.found || Object.keys(SV.lost).length > 0 },
+  { id: 'lost_all', secret: true, name: 'Lost & Found', desc: 'Find the lost doll on every upstairs map', rw: 300, ok: () => LOST_UP.every(m => SV.lost[m]) },
+  { id: 'train', secret: true, name: 'Mind the Gap', desc: 'Let the ghost train stop 40 dolls in one night', rw: 150, ok: r => r.train >= 40 },
+  { id: 'stare', secret: true, name: 'Staring Contest', desc: 'Keep your flashlight on the Shopkeeper for 20 seconds in one night', rw: 150, ok: r => r.stare >= 20 },
+  { id: 'win_basement', secret: true, name: 'Not Tonight', desc: 'Survive a night in the Basement', rw: 500, ok: r => r.win && r.map === 'basement' },
+  { id: 'lost_5', secret: true, name: 'Reunited', desc: 'Find the lost doll in the Basement', rw: 400, ok: () => !!SV.lost.basement },
 ];
 const MODE_REQ = { long: 'mini_1', endless: 'win_short' };
 const achById = id => ACH.find(a => a.id === id);
@@ -110,7 +121,7 @@ function showCards(ch) {
 tap($('bReroll'), () => { if (cardLock || P.rerolls <= 0 || G.state !== 'levelup') return; P.rerolls--; sfx('ui'); showCards(rollChoices()); });
 
 // ---------- title / setup ----------
-let selHero = SV.hero, selMode = SV.mode;
+let selHero = SV.hero, selMode = SV.mode, selMap = SV.map;
 function showTitle() { coinsSync(); screen('title'); G.state = 'title'; AU.mode = 'title'; AU.want = 0; show('btns', false); }
 function renderSetup() {
   const h = heroById(selHero), own = heroOwned(h);
@@ -120,6 +131,9 @@ function renderSetup() {
   $('heroInfo').innerHTML = `<img class="hbig${own ? '' : ' lock'}" src="${cUrl(A.portrait[HEROES.indexOf(h)].c)}"><div class="hi"><h3>${h.name} <small>${h.tag}</small></h3><p><img src="${iconUrl(h.start)}"> Starts with <b>${st.name}</b></p><p class="perk">${h.perk}</p>${how}</div>`;
   if (!modeOpen(selMode)) selMode = 'short';
   $('modes').innerHTML = Object.values(MODES).map(m => { const open = modeOpen(m.id), best = SV.stats.best[m.id]; return `<button class="mode${m.id === selMode ? ' on' : ''}${open ? '' : ' lock'}" data-m="${m.id}"><b>${m.name}</b><span>${open ? m.sub : '🔒 ' + achById(MODE_REQ[m.id]).desc}</span>${open && best ? `<em>Best ${fmt(best)}${SV.stats.wins[m.id] ? ' · ' + SV.stats.wins[m.id] + ' win' + (SV.stats.wins[m.id] > 1 ? 's' : '') : ''}</em>` : ''}</button>`; }).join('');
+  if (!mapOpen(selMap)) selMap = 'store';
+  $('maps').innerHTML = Object.values(MAPS).map(m => { const open = mapOpen(m.id), hide = m.secret && !open, best = SV.stats.mbest[m.id + ':' + selMode], won = SV.stats.mapWins[m.id];
+    return `<button class="mode map${m.id === selMap ? ' on' : ''}${open ? '' : ' lock'}${m.secret && open ? ' sec' : ''}" data-p="${m.id}"><b>${hide ? '???' : m.name} <i>${hide ? '' : m.size + (m.bonus ? ' · +' + Math.round(m.bonus * 100) + '%' : '')}</i></b><span>${open ? m.sub : hide ? 'Something is under the store. Find what was lost.' : '🔒 ' + achById(MAP_REQ[m.id]).desc}</span>${open && (best || won) ? `<em>${best ? 'Best ' + fmt(best) : ''}${won ? (best ? ' · ' : '') + won + ' win' + (won > 1 ? 's' : '') : ''}</em>` : ''}</button>`; }).join('');
   let dm = 0; for (const k in DARES) if (SV.dares[k]) dm += DARES[k].mul;
   $('dares').innerHTML = `<span class="dl">DARES${dm ? ' +' + Math.round(dm * 100) + '% buttons' : ''}</span>` + Object.keys(DARES).map(k => `<button class="dare${SV.dares[k] ? ' on' : ''}" data-d="${k}"><b>${DARES[k].name}</b><span>${DARES[k].desc} · +${Math.round(DARES[k].mul * 100)}%</span></button>`).join('');
   $('bGo').classList.toggle('no', !own); coinsSync();
@@ -127,9 +141,10 @@ function renderSetup() {
 }
 $('heroes').addEventListener('click', e => { const b = e.target.closest('[data-h]'); if (!b) return; initAudio(); selHero = b.dataset.h; sfx('ui'); renderSetup(); });
 $('modes').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; initAudio(); if (!modeOpen(b.dataset.m)) { sfx('nope'); return; } selMode = b.dataset.m; sfx('ui'); renderSetup(); });
+$('maps').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (!b) return; initAudio(); if (!mapOpen(b.dataset.p)) { sfx('nope'); return; } selMap = b.dataset.p; sfx(MAPS[selMap].secret ? 'giggle' : 'ui'); renderSetup(); });
 $('dares').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; initAudio(); const k = b.dataset.d; if (SV.dares[k]) delete SV.dares[k]; else SV.dares[k] = 1; save(); sfx('ui'); renderSetup(); });
-tap($('bStart'), () => { sfx('ui'); selHero = heroOwned(heroById(SV.hero)) ? SV.hero : 'luna'; selMode = SV.mode; renderSetup(); screen('setup'); });
-tap($('bGo'), () => { if (!heroOwned(heroById(selHero))) { sfx('nope'); return; } startRun(selMode, selHero); });
+tap($('bStart'), () => { sfx('ui'); selHero = heroOwned(heroById(SV.hero)) ? SV.hero : 'luna'; selMode = SV.mode; selMap = SV.map; renderSetup(); screen('setup'); });
+tap($('bGo'), () => { if (!heroOwned(heroById(selHero))) { sfx('nope'); return; } startRun(selMode, selHero, selMap); });
 for (const b of document.querySelectorAll('[data-back]')) tap(b, () => { sfx('ui'); showTitle(); });
 
 // ---------- toy chest (shop) ----------
@@ -166,9 +181,11 @@ function renderColl() {
     for (const k in ET) h += row(k, ET[k].name, ET[k].blurb, A.doll[k][0].R, false);
     for (const k in MB) h += row(k, MB[k].name, MB[k].sub, MB[k].final ? A.boss.R : A.mb[k].R, true);
   } else if (collTab === 'ach') {
-    for (const a of ACH) { const d = !!SV.ach[a.id]; h += `<div class="tile ach${d ? ' done' : ''}" style="--c:${d ? C.butter : '#6a58ad'}"><span class="glyph">${d ? '★' : '☆'}</span><h3>${a.name}</h3><p>${a.desc}</p><span class="cost"><i class="bi"></i>${a.rw}${d ? ' ✓' : ''}</span></div>`; }
+    for (const a of ACH) { const d = !!SV.ach[a.id], hid = a.secret && !d; h += `<div class="tile ach${d ? ' done' : ''}${a.secret ? ' sec' : ''}" style="--c:${d ? (a.secret ? '#ff5577' : C.butter) : '#6a58ad'}"><span class="glyph">${d ? '★' : hid ? '?' : '☆'}</span><h3>${hid ? '???' : a.name}</h3><p>${hid ? 'Secret sticker' : a.desc}</p><span class="cost"><i class="bi"></i>${a.rw}${d ? ' ✓' : ''}</span></div>`; }
+  } else if (collTab === 'lost') {
+    for (const id in LOST) { const L = LOST[id], f = !!SV.lost[id], hide = MAPS[id].secret && !mapOpen(id); h += `<div class="tile dex lost${f ? '' : ' unk'}" style="--c:${f ? '#ff5577' : '#43317f'}"><img src="${cUrl(A.doll.por[0].R.c)}"><h3>${f ? L.name : '???'}</h3><p>${f ? L.desc : hide ? 'Somewhere you have not been yet.' : L.hint}</p><span class="cost">${f ? 'FOUND' : ''}</span></div>`; }
   } else {
-    const s = SV.stats, rec = [[s.runs, 'nights played'], [s.kills, 'dolls stopped'], [s.minis, 'minibosses beaten'], [s.bosses, 'Madames shattered'], [s.evos, 'evolutions'], [s.earned, 'buttons earned'], [s.best.short ? fmt(s.best.short) : '-', 'best Closing Shift'], [s.best.long ? fmt(s.best.long) : '-', 'best Graveyard Shift'], [s.best.endless ? fmt(s.best.endless) : '-', 'best Endless'], [Object.keys(SV.ach).length + '/' + ACH.length, 'stickers']];
+    const s = SV.stats, rec = [[s.runs, 'nights played'], [s.kills, 'dolls stopped'], [s.minis, 'minibosses beaten'], [s.bosses, 'Madames shattered'], [s.evos, 'evolutions'], [s.earned, 'buttons earned'], [s.best.short ? fmt(s.best.short) : '-', 'best Closing Shift'], [s.best.long ? fmt(s.best.long) : '-', 'best Graveyard Shift'], [s.best.endless ? fmt(s.best.endless) : '-', 'best Endless'], [Object.keys(SV.ach).length + '/' + ACH.length, 'stickers'], [Object.keys(SV.lost).length + '/' + Object.keys(LOST).length, 'lost dolls found']];
     h = rec.map(([v, l]) => `<div class="tile rec" style="--c:${C.mint}"><h3>${v}</h3><p>${l}</p></div>`).join('');
   }
   $('collGrid').innerHTML = h; coinsSync();
@@ -177,22 +194,26 @@ $('collTabs').addEventListener('click', e => { const b = e.target.closest('[data
 tap($('bColl'), () => { sfx('ui'); renderColl(); screen('coll'); });
 
 // ---------- run start / end ----------
-function startRun(mode, heroId) {
-  initAudio(); SV.mode = mode; SV.hero = heroId; save();
-  reset(mode, heroById(heroId)); G.state = 'play'; G.spawnAcc = 2; AU.mode = 'game'; AU.layer = 0; AU.step = 0; AU.want = AU.song = 0;
+function startRun(mode, heroId, mapId) {
+  mapId = mapId && mapOpen(mapId) ? mapId : (MAP ? MAP.id : 'store');
+  initAudio(); SV.mode = mode; SV.hero = heroId; SV.map = mapId; save();
+  setMap(mapId); reset(mode, heroById(heroId)); G.state = 'play'; G.spawnAcc = 2; AU.mode = 'game'; AU.layer = 0; AU.step = 0; AU.want = AU.song = 0;
   screen(null); show('btns'); cam.x = P.x; cam.y = P.y;
-  banner(G.mode.id === 'endless' ? 'ENDLESS NIGHTMARE' : 'SURVIVE UNTIL DAWN', 'Drag anywhere to move');
+  banner(MAP.id !== 'store' ? MAP.name.toUpperCase() : G.mode.id === 'endless' ? 'ENDLESS NIGHTMARE' : 'SURVIVE UNTIL DAWN', MAP.hint);
 }
 function endRun(win, quit) {
   const M = G.mode, t = Math.min(G.t, M.len), st = SV.stats;
   const parts = [['Buttons picked up', Math.round(G.coins * S.coin)], ['Time survived', Math.floor(Math.min(t, 1800) / 6)], ['Minibosses', G.minisKilled * 25], ['Madame Porcelain', G.bossKills * 100], ['Made it to dawn', win ? (M.id === 'short' ? 100 : 400) : 0]];
+  if (G.found) parts.push(['Lost doll found', 150]);
+  if (MAP.bonus) { let sum = 0; for (const p of parts) sum += p[1]; parts.push([MAP.name + ' +' + Math.round(MAP.bonus * 100) + '%', Math.round(sum * MAP.bonus)]); }
   let dm = 0, dn = 0; for (const k in G.dare) if (G.dare[k] && DARES[k]) { dm += DARES[k].mul; dn++; }
   if (dm) { let sum = 0; for (const p of parts) sum += p[1]; parts.push(['Dares +' + Math.round(dm * 100) + '%', Math.round(sum * dm)]); }
   st.runs++; st.kills += G.kills; st.minis += G.minisKilled; st.bosses += G.bossKills; st.evos += G.evos;
   for (const k in G.seen) SV.seen[k] = (SV.seen[k] || 0) + G.seen[k];
   const newBest = t > (st.best[M.id] || 0); if (newBest) st.best[M.id] = Math.round(t);
-  if (win) { st.wins[M.id] = (st.wins[M.id] || 0) + 1; st.heroWins[G.hero.id] = 1; }
-  const r = { win, mode: M.id, t, minis: G.minisKilled, boss: G.bossKills, evos: G.evos, lvl: P.lvl, style: G.styleMax, dares: dn, zones: Object.keys(G.zones).length, weapons: Object.keys(P.up).filter(id => IT[id] && IT[id].k === 'W').length };
+  const mk = MAP.id + ':' + M.id; if (t > (st.mbest[mk] || 0)) st.mbest[mk] = Math.round(t);
+  if (win) { st.wins[M.id] = (st.wins[M.id] || 0) + 1; st.heroWins[G.hero.id] = 1; st.mapWins[MAP.id] = (st.mapWins[MAP.id] || 0) + 1; }
+  const r = { win, mode: M.id, map: MAP.id, train: G.trainKills, stare: G.stareT, found: G.found, t, minis: G.minisKilled, boss: G.bossKills, evos: G.evos, lvl: P.lvl, style: G.styleMax, dares: dn, zones: Object.keys(G.zones).length, weapons: Object.keys(P.up).filter(id => IT[id] && IT[id].k === 'W').length };
   const fresh = []; for (let pass = 0; pass < 2; pass++) for (const a of ACH) if (!SV.ach[a.id] && a.ok(r)) { SV.ach[a.id] = 1; fresh.push(a); }
   let earned = 0; for (const p of parts) earned += p[1]; for (const a of fresh) earned += a.rw;
   SV.coins += earned; st.earned += earned; save();
@@ -203,13 +224,13 @@ function endRun(win, quit) {
   $('rStats').innerHTML = [[fmt(t) + (newBest && !win ? ' ★' : ''), 'survived'], [G.kills, 'dolls stopped'], [P.lvl, 'level'], [G.minisKilled + G.bossKills, 'bosses beaten']].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
   let h = `<div class="earn"><i class="bi"></i><b>+${earned}</b><span>buttons</span></div><ul>` + parts.filter(p => p[1] > 0).map(p => `<li>${p[0]}<b>+${p[1]}</b></li>`).join('');
   for (const a of fresh) h += `<li class="new">★ Sticker: ${a.name}<b>+${a.rw}</b></li>`;
-  for (const a of fresh) { for (const x of HEROES) if (x.unlock === a.id) h += `<li class="new">New girl unlocked: ${x.name}</li>`; for (const m in MODE_REQ) if (MODE_REQ[m] === a.id) h += `<li class="new">New shift unlocked: ${MODES[m].name}</li>`; }
+  for (const a of fresh) { for (const x of HEROES) if (x.unlock === a.id) h += `<li class="new">New girl unlocked: ${x.name}</li>`; for (const m in MODE_REQ) if (MODE_REQ[m] === a.id) h += `<li class="new">New shift unlocked: ${MODES[m].name}</li>`; for (const m in MAP_REQ) if (MAP_REQ[m] === a.id) h += `<li class="new">New map unlocked: ${MAPS[m].name}</li>`; }
   const by = Object.entries(G.by).filter(e => IT[e[0]] && e[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 5), top = by.length ? by[0][1] : 1;
   $('rDmg').innerHTML = by.length ? '<span>TOP DAMAGE</span>' + by.map(([id, v]) => `<div><img src="${iconUrl(id)}"><i><u style="width:${Math.max(4, v / top * 100)}%"></u></i><b>${v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v)}</b></div>`).join('') : '';
   $('rEarn').innerHTML = h + '</ul>'; coinsSync(); show('btns', false); screen('res');
   if (fresh.length) setTimeout(() => sfx('box'), 500);
 }
-tap($('bAgain'), () => startRun(SV.mode, SV.hero));
+tap($('bAgain'), () => startRun(SV.mode, SV.hero, SV.map));
 tap($('bResShop'), openShop);
 tap($('bMenu'), () => { sfx('ui'); showTitle(); });
 function setPause(p) {
@@ -221,3 +242,12 @@ tap($('bQuit'), () => { if (G.state !== 'pause') return; show('pause', false); G
 tap($('bMute'), () => { setMuted(!AU.muted); SV.muted = AU.muted; save(); $('bMute').classList.toggle('off', AU.muted); });
 if (SV.muted) { AU.muted = true; $('bMute').classList.add('off'); }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { setPause(true); if (AU.ctx) AU.ctx.suspend(); } else if (AU.ctx) AU.ctx.resume(); });
+// ---------- secret: knock on the title ----------
+let knocks = 0, knockT = 0;
+document.querySelector('#title .logo').addEventListener('click', () => {
+  initAudio(); const now = performance.now(); if (now - knockT > 1500) knocks = 0; knockT = now; knocks++; sfx('squish');
+  if (knocks < 7) return; knocks = 0; const tg = document.querySelector('#title .tag1');
+  tg.textContent = SV.ach.knock ? pick(WHISPERS) + '.' : "Who's there?"; tg.classList.add('knock'); sfx('giggle'); G.flash = 0.6;
+  if (!SV.ach.knock) { SV.ach.knock = 1; SV.coins += achById('knock').rw; save(); coinsSync(); }
+  setTimeout(() => { tg.textContent = 'Locked in overnight. They only pretend to sleep.'; tg.classList.remove('knock'); }, 3500);
+});
