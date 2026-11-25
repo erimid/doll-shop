@@ -1,7 +1,7 @@
 // ---------- save / meta progression ----------
 const SAVE_KEY = 'dss_save_v2';
 function loadSave() {
-  const d = { coins: 0, shop: {}, items: {}, heroes: { luna: 1 }, ach: {}, seen: {}, stats: { runs: 0, kills: 0, minis: 0, bosses: 0, evos: 0, earned: 0, best: {}, wins: {}, heroWins: {}, mbest: {}, mapWins: {} }, hero: 'luna', mode: 'short', map: 'store', lost: {}, muted: false, dares: {} };
+  const d = { coins: 0, shop: {}, items: {}, heroes: { luna: 1 }, ach: {}, seen: {}, stats: { runs: 0, kills: 0, minis: 0, bosses: 0, evos: 0, earned: 0, best: {}, wins: {}, heroWins: {}, mbest: {}, mapWins: {} }, hero: 'luna', mode: 'short', map: 'store', lost: {}, muted: false, dares: {}, dread: -1, rank: 0, abil: 'scream', keep: [], seenRank: 0 };
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) for (const k in d) if (s[k] !== undefined && typeof s[k] === typeof d[k]) d[k] = typeof d[k] === 'object' ? Object.assign(d[k], s[k]) : s[k]; } catch (e) { }
   for (const k of ['best', 'wins', 'heroWins', 'mbest', 'mapWins']) if (!d.stats[k] || typeof d.stats[k] !== 'object') d.stats[k] = {};
   d.heroes.luna = 1; return d;
@@ -52,6 +52,10 @@ const ACH = [
   { id: 'win_express', name: 'Last Stop', desc: 'Survive a night on the Midnight Express', rw: 200, ok: r => r.win && r.map === 'express' },
   { id: 'win_mall', name: 'Closing Down Sale', desc: 'Survive a night in the Department Store', rw: 250, ok: r => r.win && r.map === 'mall' },
   { id: 'atlas', name: 'Store Map', desc: 'Survive a night on all four upstairs maps', rw: 400, ok: () => LOST_UP.every(m => SV.stats.mapWins[m]) },
+  { id: 'streak_200', name: 'Untouchable', desc: 'Stop 200 dolls in a row without getting hurt', rw: 200, ok: r => r.streak >= 200 },
+  { id: 'abil_10', name: 'Party Trick', desc: 'Use your ability 10 times in one night', rw: 100, ok: r => r.abUses >= 10 },
+  { id: 'rank_10', name: 'Regular', desc: 'Reach Fear Rank 10', rw: 250, ok: () => SV.rank >= 10 },
+  { id: 'rank_20', name: 'The Owner', desc: 'Reach Fear Rank 20', rw: 600, ok: () => SV.rank >= 20 },
   { id: 'knock', secret: true, name: 'Knock Knock', desc: 'Knock on the title seven times', rw: 50, ok: () => false },
   { id: 'lost_1', secret: true, name: 'Finders Keepers', desc: 'Find a lost doll', rw: 100, ok: r => r.found || Object.keys(SV.lost).length > 0 },
   { id: 'lost_all', secret: true, name: 'Lost & Found', desc: 'Find the lost doll on every upstairs map', rw: 300, ok: () => LOST_UP.every(m => SV.lost[m]) },
@@ -63,13 +67,13 @@ const ACH = [
 const MODE_REQ = { long: 'mini_1', endless: 'win_short' };
 const achById = id => ACH.find(a => a.id === id);
 const heroById = id => HEROES.find(h => h.id === id) || HEROES[0];
-const heroOwned = h => (!h.cost && !h.unlock) || !!SV.heroes[h.id] || (h.unlock && !!SV.ach[h.unlock]);
+const heroOwned = h => (!h.cost && !h.unlock && !h.rank) || !!SV.heroes[h.id] || (h.unlock && !!SV.ach[h.unlock]) || (h.rank && SV.rank >= h.rank);
 const modeOpen = id => !MODE_REQ[id] || !!SV.ach[MODE_REQ[id]];
 
 // ---------- DOM helpers ----------
 const $ = id => document.getElementById(id);
 const show = (id, on = true) => $(id).classList.toggle('on', on);
-const SCREENS = ['title', 'setup', 'shop', 'coll', 'levelup', 'pause', 'res'];
+const SCREENS = ['title', 'setup', 'shop', 'coll', 'levelup', 'pause', 'res', 'loadout'];
 function screen(id) { for (const s of SCREENS) show(s, s === id); }
 const urlCache = new Map();
 function cUrl(c) { let u = urlCache.get(c); if (!u) { u = c.toDataURL(); urlCache.set(c, u); } return u; }
@@ -122,13 +126,13 @@ tap($('bReroll'), () => { if (cardLock || P.rerolls <= 0 || G.state !== 'levelup
 
 // ---------- title / setup ----------
 let selHero = SV.hero, selMode = SV.mode, selMap = SV.map;
-function showTitle() { coinsSync(); screen('title'); G.state = 'title'; AU.mode = 'title'; AU.want = 0; show('btns', false); }
+function showTitle() { coinsSync(); rankBadge(); screen('title'); G.state = 'title'; AU.mode = 'title'; AU.want = 0; show('btns', false); }
 function renderSetup() {
   const h = heroById(selHero), own = heroOwned(h);
   $('heroes').innerHTML = HEROES.map((x, i) => `<button class="hero${x.id === selHero ? ' on' : ''}${heroOwned(x) ? '' : ' lock'}" data-h="${x.id}"><img src="${cUrl(A.portrait[i].c)}"><b>${x.name}</b></button>`).join('');
   const st = IT[h.start];
-  let how = ''; if (!own) how = h.cost ? `<button id="bBuyHero" class="btn buy${SV.coins >= h.cost ? '' : ' no'}"><i class="bi"></i>${h.cost} UNLOCK</button>` : `<span class="lockmsg">🔒 ${achById(h.unlock).desc} to unlock</span>`;
-  $('heroInfo').innerHTML = `<img class="hbig${own ? '' : ' lock'}" src="${cUrl(A.portrait[HEROES.indexOf(h)].c)}"><div class="hi"><h3>${h.name} <small>${h.tag}</small></h3><p><img src="${iconUrl(h.start)}"> Starts with <b>${st.name}</b></p><p class="perk">${h.perk}</p>${how}</div>`;
+  let how = ''; if (!own) how = h.cost ? `<button id="bBuyHero" class="btn buy${SV.coins >= h.cost ? '' : ' no'}"><i class="bi"></i>${h.cost} UNLOCK</button>` : `<span class="lockmsg">🔒 ${h.rank ? 'Reach Fear Rank ' + h.rank : achById(h.unlock).desc} to unlock</span>`;
+  $('heroInfo').innerHTML = `<img class="hbig${own ? '' : ' lock'}" src="${cUrl(A.portrait[HEROES.indexOf(h)].c)}"><div class="hi"><h3>${h.name} <small>${h.tag}</small></h3><p><img src="${iconUrl(h.start)}"> Starts with <b>${st.name}</b></p><p class="perk">${h.perk}</p>${how}${loadoutHtml()}</div>`;
   if (!modeOpen(selMode)) selMode = 'short';
   $('modes').innerHTML = Object.values(MODES).map(m => { const open = modeOpen(m.id), best = SV.stats.best[m.id]; return `<button class="mode${m.id === selMode ? ' on' : ''}${open ? '' : ' lock'}" data-m="${m.id}"><b>${m.name}</b><span>${open ? m.sub : '🔒 ' + achById(MODE_REQ[m.id]).desc}</span>${open && best ? `<em>Best ${fmt(best)}${SV.stats.wins[m.id] ? ' · ' + SV.stats.wins[m.id] + ' win' + (SV.stats.wins[m.id] > 1 ? 's' : '') : ''}</em>` : ''}</button>`; }).join('');
   if (!mapOpen(selMap)) selMap = 'store';
@@ -137,6 +141,7 @@ function renderSetup() {
   let dm = 0; for (const k in DARES) if (SV.dares[k]) dm += DARES[k].mul;
   $('dares').innerHTML = `<span class="dl">DARES${dm ? ' +' + Math.round(dm * 100) + '% buttons' : ''}</span>` + Object.keys(DARES).map(k => `<button class="dare${SV.dares[k] ? ' on' : ''}" data-d="${k}"><b>${DARES[k].name}</b><span>${DARES[k].desc} · +${Math.round(DARES[k].mul * 100)}%</span></button>`).join('');
   $('bGo').classList.toggle('no', !own); coinsSync();
+  tap($('bLoad'), openLoadout);
   const bb = $('bBuyHero'); if (bb) tap(bb, () => { if (SV.coins < h.cost) { sfx('nope'); return; } SV.coins -= h.cost; SV.heroes[h.id] = 1; save(); sfx('buy'); renderSetup(); });
 }
 $('heroes').addEventListener('click', e => { const b = e.target.closest('[data-h]'); if (!b) return; initAudio(); selHero = b.dataset.h; sfx('ui'); renderSetup(); });
@@ -182,10 +187,11 @@ function renderColl() {
     for (const k in MB) h += row(k, MB[k].name, MB[k].sub, MB[k].final ? A.boss.R : A.mb[k].R, true);
   } else if (collTab === 'ach') {
     for (const a of ACH) { const d = !!SV.ach[a.id], hid = a.secret && !d; h += `<div class="tile ach${d ? ' done' : ''}${a.secret ? ' sec' : ''}" style="--c:${d ? (a.secret ? '#ff5577' : C.butter) : '#6a58ad'}"><span class="glyph">${d ? '★' : hid ? '?' : '☆'}</span><h3>${hid ? '???' : a.name}</h3><p>${hid ? 'Secret sticker' : a.desc}</p><span class="cost"><i class="bi"></i>${a.rw}${d ? ' ✓' : ''}</span></div>`; }
+  } else if (collTab === 'rank') { h = rankTiles();
   } else if (collTab === 'lost') {
     for (const id in LOST) { const L = LOST[id], f = !!SV.lost[id], hide = MAPS[id].secret && !mapOpen(id); h += `<div class="tile dex lost${f ? '' : ' unk'}" style="--c:${f ? '#ff5577' : '#43317f'}"><img src="${cUrl(A.doll.por[0].R.c)}"><h3>${f ? L.name : '???'}</h3><p>${f ? L.desc : hide ? 'Somewhere you have not been yet.' : L.hint}</p><span class="cost">${f ? 'FOUND' : ''}</span></div>`; }
   } else {
-    const s = SV.stats, rec = [[s.runs, 'nights played'], [s.kills, 'dolls stopped'], [s.minis, 'minibosses beaten'], [s.bosses, 'Madames shattered'], [s.evos, 'evolutions'], [s.earned, 'buttons earned'], [s.best.short ? fmt(s.best.short) : '-', 'best Closing Shift'], [s.best.long ? fmt(s.best.long) : '-', 'best Graveyard Shift'], [s.best.endless ? fmt(s.best.endless) : '-', 'best Endless'], [Object.keys(SV.ach).length + '/' + ACH.length, 'stickers'], [Object.keys(SV.lost).length + '/' + Object.keys(LOST).length, 'lost dolls found']];
+    const s = SV.stats, rec = [[s.runs, 'nights played'], [s.kills, 'dolls stopped'], [s.minis, 'minibosses beaten'], [s.bosses, 'Madames shattered'], [s.evos, 'evolutions'], [s.earned, 'buttons earned'], [s.best.short ? fmt(s.best.short) : '-', 'best Closing Shift'], [s.best.long ? fmt(s.best.long) : '-', 'best Graveyard Shift'], [s.best.endless ? fmt(s.best.endless) : '-', 'best Endless'], [Object.keys(SV.ach).length + '/' + ACH.length, 'stickers'], [Object.keys(SV.lost).length + '/' + Object.keys(LOST).length, 'lost dolls found'], [SV.rank, 'fear rank'], [SV.stats.streak || 0, 'best kill streak']];
     h = rec.map(([v, l]) => `<div class="tile rec" style="--c:${C.mint}"><h3>${v}</h3><p>${l}</p></div>`).join('');
   }
   $('collGrid').innerHTML = h; coinsSync();
@@ -208,15 +214,19 @@ function endRun(win, quit) {
   if (MAP.bonus) { let sum = 0; for (const p of parts) sum += p[1]; parts.push([MAP.name + ' +' + Math.round(MAP.bonus * 100) + '%', Math.round(sum * MAP.bonus)]); }
   let dm = 0, dn = 0; for (const k in G.dare) if (G.dare[k] && DARES[k]) { dm += DARES[k].mul; dn++; }
   if (dm) { let sum = 0; for (const p of parts) sum += p[1]; parts.push(['Dares +' + Math.round(dm * 100) + '%', Math.round(sum * dm)]); }
+  st.streak = Math.max(st.streak || 0, G.streakBest);
   st.runs++; st.kills += G.kills; st.minis += G.minisKilled; st.bosses += G.bossKills; st.evos += G.evos;
   for (const k in G.seen) SV.seen[k] = (SV.seen[k] || 0) + G.seen[k];
   const newBest = t > (st.best[M.id] || 0); if (newBest) st.best[M.id] = Math.round(t);
   const mk = MAP.id + ':' + M.id; if (t > (st.mbest[mk] || 0)) st.mbest[mk] = Math.round(t);
   if (win) { st.wins[M.id] = (st.wins[M.id] || 0) + 1; st.heroWins[G.hero.id] = 1; st.mapWins[MAP.id] = (st.mapWins[MAP.id] || 0) + 1; }
-  const r = { win, mode: M.id, map: MAP.id, train: G.trainKills, stare: G.stareT, found: G.found, t, minis: G.minisKilled, boss: G.bossKills, evos: G.evos, lvl: P.lvl, style: G.styleMax, dares: dn, zones: Object.keys(G.zones).length, weapons: Object.keys(P.up).filter(id => IT[id] && IT[id].k === 'W').length };
+  const r = { win, mode: M.id, map: MAP.id, train: G.trainKills, stare: G.stareT, found: G.found, t, minis: G.minisKilled, boss: G.bossKills, evos: G.evos, lvl: P.lvl, style: G.styleMax, dares: dn, zones: Object.keys(G.zones).length, weapons: Object.keys(P.up).filter(id => IT[id] && IT[id].k === 'W').length, streak: G.streakBest, abUses: G.ab ? G.ab.uses : 0 };
   const fresh = []; for (let pass = 0; pass < 2; pass++) for (const a of ACH) if (!SV.ach[a.id] && a.ok(r)) { SV.ach[a.id] = 1; fresh.push(a); }
   let earned = 0; for (const p of parts) earned += p[1]; for (const a of fresh) earned += a.rw;
-  SV.coins += earned; st.earned += earned; save();
+  SV.coins += earned; st.earned += earned;
+  const d0 = SV.dread, dr = dreadFor(r); SV.dread += dr; const dh = dreadHtml(d0, SV.dread);
+  for (let pass = 0; pass < 2; pass++) for (const a of ACH) if (!SV.ach[a.id] && a.ok(r)) { SV.ach[a.id] = 1; fresh.push(a); SV.coins += a.rw; st.earned += a.rw; earned += a.rw; }
+  save();
   // results screen
   const el = $('res'); el.className = 'ov ' + (win ? 'dawn' : 'dead');
   $('rT').textContent = win ? 'DAWN!' : quit ? 'YOU SNUCK OUT' : 'THEY GOT YOU'; $('rT').className = 'big' + (win ? '' : ' drip');
@@ -227,14 +237,16 @@ function endRun(win, quit) {
   for (const a of fresh) { for (const x of HEROES) if (x.unlock === a.id) h += `<li class="new">New girl unlocked: ${x.name}</li>`; for (const m in MODE_REQ) if (MODE_REQ[m] === a.id) h += `<li class="new">New shift unlocked: ${MODES[m].name}</li>`; for (const m in MAP_REQ) if (MAP_REQ[m] === a.id) h += `<li class="new">New map unlocked: ${MAPS[m].name}</li>`; }
   const by = Object.entries(G.by).filter(e => IT[e[0]] && e[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 5), top = by.length ? by[0][1] : 1;
   $('rDmg').innerHTML = by.length ? '<span>TOP DAMAGE</span>' + by.map(([id, v]) => `<div><img src="${iconUrl(id)}"><i><u style="width:${Math.max(4, v / top * 100)}%"></u></i><b>${v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v)}</b></div>`).join('') : '';
-  $('rEarn').innerHTML = h + '</ul>'; coinsSync(); show('btns', false); screen('res');
+  $('rEarn').innerHTML = h + '</ul>'; $('rDread').innerHTML = dh.html; coinsSync(); show('btns', false); screen('res');
+  setTimeout(() => { const u = document.querySelector('#rDread u'); if (u) u.style.width = u.dataset.w + '%'; }, 450);
+  if (dh.ups.length) setTimeout(() => { sfx('level'); banner('FEAR RANK ' + SV.rank, rankLine(dh.ups[dh.ups.length - 1]).name + ' unlocked'); }, 900);
   if (fresh.length) setTimeout(() => sfx('box'), 500);
 }
 tap($('bAgain'), () => startRun(SV.mode, SV.hero, SV.map));
 tap($('bResShop'), openShop);
 tap($('bMenu'), () => { sfx('ui'); showTitle(); });
 function setPause(p) {
-  if (p && G.state === 'play') { G.state = 'pause'; $('pBuild').innerHTML = buildHtml(); show('pause'); joy.on = false; joy.dx = joy.dy = 0; }
+  if (p && G.state === 'play') { G.state = 'pause'; $('pBuild').innerHTML = buildHtml() + runKit(); $('banner').classList.remove('go'); $('zt').classList.remove('go'); show('pause'); joy.on = false; joy.dx = joy.dy = 0; }
   else if (!p && G.state === 'pause') { G.state = 'play'; show('pause', false); }
 }
 tap($('bPause'), () => setPause(true)); tap($('bResume'), () => setPause(false));
