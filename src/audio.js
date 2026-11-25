@@ -34,7 +34,7 @@ function noiz(d, o = {}) {
   gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(o.g || 0.2, t0 + (o.a || 0.004)); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
   s.connect(f); f.connect(gn); gn.connect(o.bus || aSfx); s.start(t0, Math.random() * 0.5); s.stop(t0 + d + 0.04);
 }
-const SFX_GAP = { coin: 0.05, chime: 0.3, ui: 0.05, shoot: 0.09, hit: 0.05, pop: 0.045, gem: 0.035, wake: 0.3, zap: 0.1, squish: 0.07, meow: 0.2, boom: 0.08, giggle: 2, whisper: 2, heart: 0.5, creak: 0.6, horn: 1 };
+const SFX_GAP = { coin: 0.05, chime: 0.3, ui: 0.05, shoot: 0.09, hit: 0.05, pop: 0.045, gem: 0.035, wake: 0.3, zap: 0.1, squish: 0.07, meow: 0.2, boom: 0.08, giggle: 2, whisper: 2, heart: 0.5, creak: 0.6, horn: 1, pins: 0.12, shriek: 1 };
 const sfxLast = {};
 const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
 function sfx(n) {
@@ -73,6 +73,14 @@ function sfx(n) {
     case 'train': noiz(1.2, { fc: 900, f2: 160, g: 0.3 }); for (let i = 0; i < 8; i++) tone(70, 0.08, { type: 'square', g: 0.12, t: i * 0.12 }); break;
     case 'creak': tone(rand(150, 210), 0.7, { type: 'sawtooth', f2: rand(90, 120), g: 0.06, a: 0.1 }); noiz(0.5, { type: 'bandpass', fc: 600, q: 6, g: 0.05 }); break;
     case 'bossdie': noiz(0.9, { fc: 5000, f2: 300, g: 0.35 }); tone(300, 0.9, { type: 'square', f2: 30, g: 0.2 }); for (let i = 0; i < 8; i++) tone(rand(1500, 4000), 0.12, { g: 0.04, t: i * 0.06 }); break;
+    case 'scream': tone(1400, 0.9, { type: 'sawtooth', f2: 260, g: 0.16 }); tone(1480, 0.9, { type: 'sawtooth', f2: 300, g: 0.12 }); noiz(0.8, { type: 'bandpass', fc: 2600, f2: 500, q: 2, g: 0.25 }); break;
+    case 'vanish': noiz(0.5, { type: 'bandpass', fc: 600, f2: 3200, q: 4, g: 0.12, a: 0.1 }); tone(330, 0.5, { type: 'triangle', f2: 990, g: 0.06, send: true }); break;
+    case 'shutter': noiz(0.05, { fc: 4000, type: 'highpass', g: 0.3 }); noiz(0.06, { fc: 2000, g: 0.2, t: 0.07 }); tone(3200, 0.4, { f2: 1800, g: 0.04, t: 0.02 }); break;
+    case 'bell': for (const [f, gg] of [[98, 0.3], [196, 0.18], [233, 0.1], [392, 0.08], [587, 0.05]]) tone(f, 3, { type: 'sine', g: gg, send: true }); noiz(0.1, { fc: 1500, g: 0.15 }); break;
+    case 'bell2': tone(147, 1.4, { g: 0.12, send: true }); tone(294, 1, { g: 0.06, send: true }); break;
+    case 'ready': tone(988, 0.12, { type: 'triangle', g: 0.07 }); tone(1480, 0.2, { type: 'triangle', g: 0.06, t: 0.08, send: true }); break;
+    case 'pins': for (let i = 0; i < 3; i++) tone(rand(2600, 3400), 0.05, { type: 'square', f2: 1800, g: 0.02, t: i * 0.025 }); break;
+    case 'shriek': tone(1900, 0.5, { type: 'sawtooth', f2: 2600, g: 0.07 }); tone(2010, 0.5, { type: 'sawtooth', f2: 2500, g: 0.06 }); break;
   }
 }
 // music: three creepy toy songs. layers build with the night, songs rotate during a run

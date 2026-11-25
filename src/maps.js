@@ -74,11 +74,12 @@ function hunterUpd(dt) {
     banner('THE SHOPKEEPER', 'She does not like customers after hours'); sfx('dark'); sfx('whisper'); G.flick = 1; return;
   }
   const h = G.hunter; h.t += dt; if (h.tp > 0) h.tp -= dt; if (h.fade > 0) h.fade -= dt;
+  if (G.stopT > 0 || G.stunH > 0) { h.lit = true; return; }
   const dx = P.x - h.x, dy = P.y - h.y, d = Math.hypot(dx, dy) || 1;
   const litR = 540 * (1 + 0.1 * S.batt), litA = 0.5 + 0.03 * S.batt;
   h.lit = d < litR && Math.abs(wrapA(Math.atan2(-dy, -dx) - P.aim)) < litA;
   if (h.lit) G.stareT += dt;
-  const sp = (135 + Math.min(55, G.t / 10)) * (G.dare.rush ? 1.1 : 1) * (h.lit ? 0.25 : 1) * (G.bosses.length ? 0.8 : 1);
+  const sp = (135 + Math.min(55, G.t / 10)) * (G.dare.rush ? 1.1 : 1) * (h.lit ? 0.25 : 1) * (G.bosses.length ? 0.8 : 1) * (G.hideT > 0 ? 0.2 : 1);
   h.x += dx / d * sp * dt; h.y += dy / d * sp * dt; h.sy = h.y; if (Math.abs(dx) > 6) h.face = dx > 0 ? 1 : -1;
   if (d < 420) { G.hunterHeart -= dt; if (G.hunterHeart <= 0) { G.hunterHeart = 0.35 + d / 900; sfx('heart'); } }
   if (d > 1150 && h.tp <= 0) { h.tp = 7; hunterPlace(720, true); h.fade = 0.6; sfx('giggle'); }

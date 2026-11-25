@@ -165,13 +165,14 @@ function reset(mode, hero) {
   for (const a of [enemies, gems, shots, eshots, parts, nums, boxes, pets, rings, flashes, ezones, fields, beams, bolts, toys]) a.length = 0;
   G.mode = MODES[mode] || MODES.short; G.hero = hero || HEROES[0];
   const M = G.mode;
-  Object.assign(G, { t: 0, kills: 0, coins: 0, shake: 0, flash: 0, flash2: 0, blackout: 0, hurt: 0, dawn: 0, spawnAcc: 0, boxT: 22, comboT: 0, pending: 0, bosses: [], bossDead: false, dmgDone: 0, dps: 0, dpsT: 0, dpsLast: 0, stateT: 0, cap: 24, lightT: rand(14, 22), scareT: rand(22, 32), peek: 0, peekD: 1, peekS: 1, flick: 0, stare: 0, msgT: 0, msg: '', msgX: .5, msgY: .5, heartT: 0, nextWave: 60, wi: 0, minis: M.minis.slice(), nextMini: M.every || 0, bossAt: M.boss, bossWarn: false, eliteT: 50, hm: 1, kbR: 1, spdMul: 1, dmgMul: 1, minisKilled: 0, bossKills: 0, evos: 0, seen: {}, by: {}, styleMax: 0, dare: Object.assign({}, SV.dares), zone: null, zones: {}, mbOrder: Object.keys(MB).filter(k => !MB[k].final).sort(() => Math.random() - 0.5), mbi: 0, earned: 0 });
+  Object.assign(G, { t: 0, kills: 0, coins: 0, shake: 0, flash: 0, flash2: 0, blackout: 0, hurt: 0, dawn: 0, spawnAcc: 0, boxT: 22, comboT: 0, pending: 0, bosses: [], bossDead: false, dmgDone: 0, dps: 0, dpsT: 0, dpsLast: 0, stateT: 0, cap: 24, lightT: rand(14, 22), scareT: rand(22, 32), peek: 0, peekD: 1, peekS: 1, flick: 0, stare: 0, msgT: 0, msg: '', msgX: .5, msgY: .5, heartT: 0, nextWave: 60, wi: 0, minis: M.minis.slice(), nextMini: M.every || 0, bossAt: M.boss, bossWarn: false, eliteT: 50, hm: 1, kbR: 1, spdMul: 1, dmgMul: 1, minisKilled: 0, bossKills: 0, evos: 0, seen: {}, by: {}, styleMax: 0, dare: Object.assign({}, SV.dares), zone: null, zones: {}, mbOrder: Object.keys(MB).filter(k => !MB[k].final).sort(() => Math.random() - 0.5), mbi: 0, earned: 0, almost: false, streak: 0, streakBest: 0, hideT: 0, stopT: 0, stunH: 0, decoy: null, abFx: 0, keep: {} });
+  for (const k of SV.keep || []) G.keep[k] = 1;
   P = { kind: 'player', x: W / 2, y: H / 2 + 10, sy: H / 2 + 10, r: 13, hp: 100, maxhp: 100, vx: 0, vy: 0, face: 1, back: false, aim: -Math.PI / 2, inv: 0, lvl: 1, xp: 0, need: need(1), up: {}, walk: 0, moving: false, tm: { gloss: 0.5, bomb: 1, ball: 0.6, storm: 1.4, aura: 0, spray: 0, scissors: 0.8, mirror: 1, musicbox: 1.5, whip: 0.6, bubble: 0.8, zap: 1, trail: 0, turret: 0.5, alarm: 12 }, whipB: 0, whipF: 1, mend: 0, charms: [], auraR: 0, sprayR: 0, sprayA: 0, shieldUp: false, shieldT: 3, revives: 0, rerolls: 0, blinkT: 3 };
   P.up[G.hero.start] = 1;
   const sh = SV.shop, hm = G.hero.mod;
   if (sh.start) { const c = Object.values(IT).filter(u => u.k !== 'W' && u.id !== 'coupon' && itemOk(u.id)); P.up[pick(c).id] = 1; }
   P.revives = (sh.revive || 0) + (hm.revive || 0); P.rerolls = (sh.reroll || 0) + (hm.reroll || 0);
-  recalc(); P.hp = P.maxhp; buildPlayerArt(P.up, G.hero); syncPets();
+  recalc(); P.hp = P.maxhp; buildPlayerArt(P.up, G.hero); syncPets(); abilReset();
   for (let i = 0; i < (sh.head || 0); i++) { P.lvl++; P.need = need(P.lvl); G.pending++; }
   for (const s of slots) { s.state = 0; s.type = wpick(s.sh.z.types); s.vr = randi(0, 2); s.blink = rand(1, 12); }
   for (const l of lairs) l.used = false;
@@ -200,11 +201,13 @@ function recalc() {
   S.area *= (1 + 0.04 * n('area')) * (1 + (hm.area || 0));
   S.pet = (1 + 0.18 * lv('bracelet')) * [1, 1.25, 1.6][pt]; S.petFast = pt === 2 ? 0.75 : 1;
   S.critM = 2 + 0.25 * lv('tiara'); S.sour = 0.1 * lv('sour'); S.mend = 6 * lv('plaster'); S.invB = 0.12 * lv('plaster'); S.night = 0.06 * lv('nightlight'); S.alarm = [0, 34, 30, 26, 22, 18][lv('alarm')]; S.cards = lv('coupon') ? 4 : 3;
+  keepRecalc();
   if (G.dare.glass) P.maxhp = Math.round(P.maxhp * 0.5);
   G.styleMax = Math.max(G.styleMax, mk, of, cm, ty, pt); if (P.hp > P.maxhp) P.hp = P.maxhp;
 }
 function syncPets() {
   const want = { kitty: [0, 1, 1, 2, 2, 3, 5][lv('kitty')], bunny: [0, 1, 1, 2, 2, 3, 4][lv('bunny')] };
+  if (G.keep.sister) want.sister = 1;
   for (const k in want) { let n = pets.filter(p => p.k === k).length; while (n < want[k]) { pets.push({ kind: 'pet', k, x: P.x, y: P.y, sy: P.y, st: 'idle', t: rand(TAU), cd: rand(0.3, 1), face: 1, i: n, hit: [], tg: null }); n++; } }
 }
 function applyUpgrade(id) {
@@ -290,7 +293,7 @@ function spawnMini(id, x, y) {
 }
 function hurt(e, dmg, ax, ay, kb = 120, dot = false) {
   if (e.dead) return;
-  let crit = false; dmg *= S.dmg; if (e.lit && S.batt) dmg *= 1 + 0.06 * S.batt;
+  let crit = false; dmg *= S.dmg * grudge(); if (e.lit && S.batt) dmg *= 1 + 0.06 * S.batt + S.moth;
   if (S.sour && (e.slow > 0 || e.poisT > 0)) dmg *= 1 + S.sour;
   if (!dot && Math.random() < S.crit) { dmg *= S.critM; crit = true; }
   dmg = Math.max(1, Math.round(dmg * rand(0.88, 1.12)));
@@ -301,7 +304,8 @@ function hurt(e, dmg, ax, ay, kb = 120, dot = false) {
   if (e.hp <= 0) kill(e);
 }
 function kill(e) {
-  e.dead = true; G.kills++; G.seen[e.type] = (G.seen[e.type] || 0) + 1;
+  e.dead = true; G.kills++; G.seen[e.type] = (G.seen[e.type] || 0) + 1; streakKill(e);
+  if (e.elite && G.keep.tooth) boxes.push({ kind: 'box', x: e.x, y: e.y, sy: e.y, t: 0, dead: false });
   const col = e.type === 'bal' || e.type === 'robot' ? 'mint' : e.type === 'mat' || e.type === 'buddy' ? 'butter' : e.type === 'por' || e.type === 'baby' ? 'blue' : 'pink';
   burst(e.x, e.y - e.hgt * 0.45, col, e.boss ? 40 : 7); sfx('pop'); if (e.r > 15) shake(3);
   if (e.type === 'mat' && e.tier < 2) for (const s of [-1, 1]) { const c = spawnEnemy('mat', e.x + s * 10, e.y + rand(-6, 6), { tier: e.tier + 1, vr: e.vr }); c.kx = s * 260; c.ky = rand(-120, 120); }
@@ -360,6 +364,7 @@ function updEnemies(dt) {
     if (e.dead) continue;
     e.t += dt; if (e.flash > 0) e.flash -= dt; if (e.ch > 0) e.ch -= dt;
     if (e.poisT > 0) { const q = Math.min(dt, e.poisT); e.poisT -= q; e._pa = (e._pa || 0) + e.pois * q / 2; if (e.poisT <= 0) { e.pois = 0; } if (e._pa >= 3 || e.poisT <= 0) { const v = e._pa; e._pa = 0; if (v >= 1) { SRC = 'lipstick'; hurt(e, v, 0, 0, 0, true); } if (e.dead) continue; } }
+    if (G.stopT > 0) continue;
     if (e.st === 'jump') {
       e.jt += dt / e.jd; const k = Math.min(1, e.jt); e.x = lerp(e.jx0, e.jx1, k); e.y = lerp(e.jy0, e.jy1, k); e.z = Math.sin(Math.PI * k) * e.jh; e.sy = Math.max(e.y, e.jy1) + 80;
       if (e.jt >= 1) { e.st = 'chase'; e.z = 0; e.jh = 34; part(e.x, e.y, 0, -10, 0.3, 22, A.puff, false, 0, 0, 40); if (e.boss) { sfx('stomp'); shake(14); } }
@@ -367,6 +372,7 @@ function updEnemies(dt) {
     }
     const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy) || 1;
     let sp = e.spd * G.spdMul, mx = dx / d, my = dy / d;
+    const gl = (G.decoy || G.hideT > 0) && enemyGoal(e); if (gl) { const gx = gl.x - e.x, gy = gl.y - e.y, gd = Math.hypot(gx, gy) || 1; mx = gx / gd; my = gy / gd; if (gd < 30) sp *= 0.15; }
     e.lit = d < litR && Math.abs(wrapA(Math.atan2(-dy, -dx) - P.aim)) < litA;
     switch (e.ai) {
       case 'mb': e._mx = undefined; sp = mbAI(e, dt, d, mx, my); if (e.st === 'jump') continue; if (e._mx !== undefined) { mx = e._mx; my = e._my; } break;
@@ -397,6 +403,7 @@ function updEnemies(dt) {
     for (let i = 0; i < n; i++) { const a = c[i]; if (a.dead || a.boss) continue; for (let j = i + 1; j < n; j++) { const b = c[j]; if (b.dead || b.boss) continue; const dx = b.x - a.x, dy = b.y - a.y, q = (a.r + b.r) * 0.9, d2 = dx * dx + dy * dy; if (d2 < q * q && d2 > 0.01) { const d = Math.sqrt(d2), p = (q - d) / d * 0.5 * Math.min(1, dt * 14), wa = b.mass / (a.mass + b.mass); a.x -= dx * p * wa * 2; a.y -= dy * p * wa * 2; b.x += dx * p * (1 - wa) * 2; b.y += dy * p * (1 - wa) * 2; } } }
   }
   for (const z of ezones) {
+    if (G.stopT > 0) continue;
     z.t += dt; if (z.t < z.d) continue; z.dead = true; if (z.drop) rafterDrop(z); if (!z.dmg) continue;
     ring(z.x, z.y, z.r * 0.3, z.r, 0.3, 'red', 6); flashAt(z.x, z.y, z.r * 2, 0.25, 'red'); for (let i = 0; i < 5; i++) part(z.x + rand(-z.r, z.r) * 0.6, z.y + rand(-z.r, z.r) * 0.4, 0, -40, 0.4, rand(20, 34), A.puff, false, 0, 1, 30);
     if (Math.hypot(P.x - z.x, P.y - z.y) < z.r + P.r) damagePlayer(z.dmg);
@@ -405,12 +412,12 @@ function updEnemies(dt) {
 }
 function pushAway(r, f) { for (const e of enemies) { if (e.dead || e.boss) continue; const dx = e.x - P.x, dy = e.y - P.y, q = dx * dx + dy * dy; if (q < r * r) { const k = Math.sqrt(q) || 1; e.kx += dx / k * f / e.mass; e.ky += dy / k * f / e.mass; } } }
 function damagePlayer(d, src) {
-  if (P.inv > 0 || G.state !== 'play') return;
+  if (P.inv > 0 || G.state !== 'play' || G.hideT > 0) return;
   if (Math.random() < S.dodge) { addNum(P.x, P.y - 78, 'MISS', 3); P.inv = 0.4; return; }
   if (S.thorns) { SRC = 'backpack'; forNear(P.x, P.y, 115, e => hurt(e, S.thorns, P.x, P.y, 320)); ring(P.x, P.y, 20, 115, 0.3, 'butter', 5); }
   if (P.shieldUp) { P.shieldUp = false; P.shieldT = S.shieldCd; P.inv = 0.7; ring(P.x, P.y, 30, 140, 0.4, 'mint', 7); sfx('squish'); pushAway(140, 480); addNum(P.x, P.y - 78, 'BLOCK', 3); return; }
   d = Math.max(1, d * G.dmgMul * S.armor);
-  P.hp -= d; P.inv = 0.8 + S.invB; P.mend += S.mend; G.hurt = 1; shake(9); sfx('hurt'); addNum(P.x, P.y - 78, '-' + Math.round(d), 2);
+  streakLost(); P.hp -= d; P.inv = 0.8 + S.invB; P.mend += S.mend; G.hurt = 1; shake(9); sfx('hurt'); addNum(P.x, P.y - 78, '-' + Math.round(d), 2);
   pushAway(130, 420); ring(P.x, P.y, 20, 130, 0.3, 'red', 4);
   if (P.hp <= 0) {
     if (P.revives > 0) { P.revives--; P.hp = P.maxhp * 0.5; P.inv = 2.5; pushAway(420, 900); SRC = 'other'; forNear(P.x, P.y, 300, e => hurt(e, 80 + G.t * 0.3, P.x, P.y, 0)); ring(P.x, P.y, 30, 420, 0.6, 'butter', 10); flashAt(P.x, P.y, 700, 0.7, 'warm'); G.flash = 0.8; banner('NOT TONIGHT!', 'Extra life used'); sfx('level'); return; }
@@ -453,7 +460,7 @@ function doWave() {
 function nearSpot(dist) { let dx = W / 2 - P.x, dy = H / 2 - P.y, d = Math.hypot(dx, dy); if (d < 60) { dx = 0; dy = -1; d = 1; } return [clamp(P.x + dx / d * dist, 140, W - 140), clamp(P.y + dy / d * dist * 0.85, 180, H - 100)]; }
 function director(dt) {
   const t = G.t, m = t / 60, M = G.mode;
-  const lm = Math.max(0, m - 5); G.hm = 1 + m * 0.38 + m * m * 0.045 + lm * lm * lm * 0.05; G.spdMul = (1 + Math.min(0.3, t / 900 * 0.3) + Math.max(0, t - 600) / 600 * 0.5) * (G.dare.rush ? 1.2 : 1); G.dmgMul = 1 + Math.min(3, t / 600 * 0.7);
+  const lm = Math.max(0, m - 5); G.hm = 1 + m * 0.38 + m * m * 0.045 + lm * lm * lm * 0.05; G.spdMul = (1 + Math.min(0.3, t / 900 * 0.3) + Math.max(0, t - 600) / 600 * 0.5) * (G.dare.rush ? 1.2 : 1) * (G.keep.button ? 1.08 : 1); G.dmgMul = 1 + Math.min(3, t / 600 * 0.7);
   G.cap = Math.min(250, 24 + t * 0.62) * (G.dare.swarm ? 1.3 : 1) * (MAP.dens || 1); G.kbR = Math.sqrt(G.hm);
   if (!G.bosses.some(b => b.mb.final)) AU.layer = t < 50 ? 0 : t < 125 ? 1 : 2;
   G.dpsT += dt; if (G.dpsT >= 10) { G.dps = lerp((G.dmgDone - G.dpsLast) / G.dpsT, G.dps, 0.4); G.dpsLast = G.dmgDone; G.dpsT = 0; }
@@ -506,6 +513,7 @@ function explode(x, y, rad, dmg, col) {
 }
 const echo = (tm, k) => { if (S.echo && Math.random() < S.echo) tm[k] = Math.min(tm[k], 0.16); };
 function updWeapons(dt) {
+  updV5Weapons(dt);
   const tm = P.tm; let L;
   if ((L = lv('gloss'))) { SRC = 'gloss';
     tm.gloss -= dt;
@@ -645,11 +653,12 @@ function crack(dir, L) {
   forNear(P.x + dir * R / 2, P.y, R / 2 + hh, e => { const dx = (e.x - P.x) * dir; if (dx > -12 && dx < R + e.r && Math.abs(e.y - P.y) < hh + e.r) hurt(e, dmg, P.x, P.y, 210); });
   beams.push({ x: P.x, y: P.y + 8, a: dir > 0 ? 0 : Math.PI, len: R, w: hh * 0.5, t: 0, d: 0.2, evo: L === 6, whip: true, dead: false }); sfx('shoot');
 }
-const SHOTSRC = { gloss: 'gloss', bomb: 'bomb', star: 'storm', scis: 'scissors', ball: 'ball', bub: 'bubble' };
+const SHOTSRC = { pin: 'pins', hand: 'hands', gloss: 'gloss', bomb: 'bomb', star: 'storm', scis: 'scissors', ball: 'ball', bub: 'bubble' };
 function updShots(dt) {
   for (const s of shots) {
     if (s.dead) continue;
     SRC = SHOTSRC[s.k];
+    if (s.k === 'pin' || s.k === 'hand') { updV5Shot(s, dt); continue; }
     if (s.k === 'bub') {
       s.t += dt; s.life -= dt; const k = Math.exp(-0.5 * dt); s.vx *= k; s.vy *= k; s.x += s.vx * dt; s.y += s.vy * dt + Math.sin(s.t * 3) * 8 * dt;
       let hit = false; forNear(s.x, s.y, s.r, () => { hit = true; });
@@ -685,7 +694,7 @@ function updShots(dt) {
     }
   }
   for (const s of eshots) {
-    if (s.dead) continue;
+    if (s.dead || G.stopT > 0) continue;
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; if (s.life <= 0) s.dead = true;
     const dx = s.x - P.x, dy = s.y - P.y; if (dx * dx + dy * dy < (s.r + P.r) * (s.r + P.r)) { s.dead = true; damagePlayer(s.dmg); }
   }
@@ -694,6 +703,7 @@ function updPets(dt) {
   let ki = 0, bi = 0;
   for (const p of pets) {
     p.t += dt;
+    if (p.k === 'sister') { updSister(p, dt); p.sy = p.y + 6; continue; }
     if (p.k === 'kitty') {
       const L = lv('kitty'), i = ki++;
       if (p.st === 'idle') {
@@ -754,7 +764,8 @@ function updPlayer(dt) {
   let ix = joy.dx + key.x, iy = joy.dy + key.y;
   if (G.bot) [ix, iy] = botInput();
   const m = Math.hypot(ix, iy); if (m > 1) { ix /= m; iy /= m; }
-  const sp = 215 * S.spd, f = 1 - Math.exp(-20 * dt);
+  const sp = 215 * S.spd * (G.hideT > 0 ? 1.25 : 1), f = 1 - Math.exp(-20 * dt);
+  updAbility(dt);
   P.vx = lerp(P.vx, ix * sp, f); P.vy = lerp(P.vy, iy * sp, f);
   P.x += P.vx * dt; P.y += P.vy * dt;
   for (const s of solids) { if (s.x > P.x + 40 || s.x + s.w < P.x - 40 || s.y > P.y + 40 || s.y + s.h < P.y - 40) continue; const cx = clamp(P.x, s.x, s.x + s.w), cy = clamp(P.y, s.y, s.y + s.h), dx = P.x - cx, dy = P.y - cy, d2 = dx * dx + dy * dy; if (d2 < P.r * P.r) { if (d2 > 0.0001) { const d = Math.sqrt(d2); P.x = cx + dx / d * P.r; P.y = cy + dy / d * P.r; } else { P.y = s.y + s.h + P.r; } } }
@@ -822,7 +833,7 @@ function update(dt) {
   if (st === 'dawn') {
     G.stateT += dt; G.dawn = Math.min(1, G.stateT / 2.6); updFx(dt);
     for (const e of enemies) { e.t += dt * 0.3; if (!e.dead && Math.random() < dt * (0.8 + G.stateT * 2)) { e.dead = true; burst(e.x, e.y - e.hgt * 0.4, 'butter', e.boss ? 30 : 5); } }
-    compact(enemies); eshots.length = 0; ezones.length = 0; G.train = null;
+    compact(enemies); eshots.length = 0; ezones.length = 0; G.train = null; G.decoy = null; G.stopT = 0;
     if (G.hunter) { burst(G.hunter.x, G.hunter.y - 120, 'red', 30); G.hunter = null; }
     if (G.stateT > 3.6) { G.state = 'won'; endRun(true); }
     return;
@@ -833,6 +844,6 @@ function sim(mode = 'short', heroId = 'luna', maxT = 1000, map) {
   G.bot = true; reset(mode, HEROES.find(h => h.id === heroId)); G.state = 'play';
   const log = []; let lastLog = 0, n = 0;
   while (G.state === 'play' && n++ < maxT * 60) { update(1 / 60); if (G.t - lastLog >= 60) { lastLog = G.t; log.push(`${Math.round(G.t)}s L${P.lvl} hp${Math.round(P.hp)} en${enemies.length} k${G.kills} dps${Math.round(G.dps)} hm${G.hm.toFixed(1)} mb${G.minisKilled} c${G.coins}`); } }
-  const r = { map: MAP.id, state: G.state, t: Math.round(G.t), trainK: G.trainKills, found: G.found, lvl: P.lvl, kills: G.kills, hp: Math.round(P.hp), bossDead: G.bossDead, minis: G.minisKilled, coins: G.coins, evos: G.evos, up: Object.assign({}, P.up), by: Object.assign({}, G.by), log };
+  const r = { map: MAP.id, state: G.state, t: Math.round(G.t), trainK: G.trainKills, found: G.found, lvl: P.lvl, kills: G.kills, hp: Math.round(P.hp), bossDead: G.bossDead, minis: G.minisKilled, coins: G.coins, evos: G.evos, abUses: G.ab ? G.ab.uses : 0, streak: G.streakBest, up: Object.assign({}, P.up), by: Object.assign({}, G.by), log };
   G.bot = false; G.state = 'title'; return r;
 }
